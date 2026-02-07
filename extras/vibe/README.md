@@ -43,6 +43,8 @@ No upstream source code changes are required for these behaviors.
     `window_decorations = "TITLE|RESIZE"`).
   - On Windows the titlebar color is managed by the OS; borderless is the reliable
     way to get a "pure black" top edge.
+  - `Ctrl+Alt+D` triggers `StartWindowDrag` to move the window more easily when
+    the titlebar is hidden.
 
 ## Install
 

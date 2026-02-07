@@ -436,6 +436,9 @@ local config = {
         save_state(persisted)
       end),
     },
+
+    -- Easier window move when borderless (titlebar hidden).
+    { key = 'd', mods = 'CTRL|ALT', action = act.StartWindowDrag },
   },
 }
 
