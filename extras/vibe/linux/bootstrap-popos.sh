@@ -5,8 +5,24 @@ say() {
   printf '%s\n' "$*"
 }
 
+have_path_entry() {
+  # returns 0 if $1 is present in PATH as a full entry
+  case ":$PATH:" in
+    *":$1:"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 need_cmd() {
   command -v "$1" >/dev/null 2>&1
+}
+
+detect_os() {
+  if [ -r /etc/os-release ]; then
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    say "Detected OS: ${PRETTY_NAME:-unknown}"
+  fi
 }
 
 here_dir() {
@@ -151,13 +167,21 @@ else
   say "You can run directly: $WRAPPER"
 fi
 
+detect_os
+
 say ""
 say "Next:"
 say "  westerm"
+if ! have_path_entry "$BIN_DIR"; then
+  say ""
+  say "note: $BIN_DIR is not in PATH in this shell."
+  say "You can run the full path:"
+  say "  $WRAPPER"
+fi
 say ""
 say "If the AppImage fails to start, install FUSE:"
 say "  sudo apt-get update && sudo apt-get install -y libfuse2"
+say "  (if that package doesn't exist, try: sudo apt-get install -y libfuse2t64)"
 say ""
 say "For best paste-undo on Wayland/X11, install a clipboard helper:"
 say "  sudo apt-get update && sudo apt-get install -y wl-clipboard xclip xsel"
-

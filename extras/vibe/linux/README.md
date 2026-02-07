@@ -38,6 +38,13 @@ sudo apt-get update
 sudo apt-get install -y libfuse2
 ```
 
+If that package isn't available (newer Ubuntu base), try:
+
+```sh
+sudo apt-get update
+sudo apt-get install -y libfuse2t64
+```
+
 - Paste-undo on Linux is best-effort and depends on a clipboard helper:
   - Wayland: `wl-clipboard` (`wl-paste`)
   - X11: `xclip` or `xsel`
@@ -52,4 +59,3 @@ sudo apt-get install -y wl-clipboard xclip xsel
 - Font: the default distro font is `OCR A Extended` (matches Windows vibe), but it
   may not be installed on Linux. The config will fall back to common monospace
   fonts (`DejaVu Sans Mono`, `monospace`, etc.), so it will still work.
-
