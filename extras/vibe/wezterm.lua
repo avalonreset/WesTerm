@@ -9,7 +9,10 @@ local paste_undo_fallback_chars = 50000
 -- Use a curated set of built-in schemes and provide a hotkey to cycle them.
 
 -- Persist the last selected theme/font so it survives restart/crash.
-local state_path = wezterm.config_dir .. '/.wezterm-vibe-state.json'
+-- IMPORTANT: this distro may load its config from the install directory
+-- (eg: `wezterm.lua` next to the exe). That directory may not be writable,
+-- so store state in the per-user home directory instead.
+local state_path = wezterm.home_dir .. '/.wezterm-vibe-state.json'
 
 local function read_file(path)
   local f = io.open(path, 'rb')
