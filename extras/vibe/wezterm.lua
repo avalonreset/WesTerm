@@ -432,6 +432,70 @@ local function pick_default_window_decorations()
   return 'TITLE|RESIZE'
 end
 
+local keys = {
+  -- Copy selection (Ctrl+Shift+C). Don't steal Ctrl+C: users need SIGINT in shells/TUIs.
+  { key = 'C', mods = 'CTRL|SHIFT', action = act.CopyTo 'Clipboard' },
+
+  -- Undo/redo the most recent paste (best-effort).
+  -- Ctrl+Z is `key='z', mods='CTRL'` and Ctrl+Shift+Z is `key='Z', mods='CTRL|SHIFT'`.
+  { key = 'z', mods = 'CTRL', action = undo_paste },
+  { key = 'Z', mods = 'CTRL|SHIFT', action = redo_paste },
+  -- More explicit variants to be resilient to `key_map_preference` and layout differences.
+  { key = 'mapped:z', mods = 'CTRL', action = undo_paste },
+  { key = 'mapped:Z', mods = 'CTRL|SHIFT', action = redo_paste },
+
+  -- Reload config (Ctrl+Shift+R). Don't steal Ctrl+R: shells use it for history search.
+  { key = 'R', mods = 'CTRL|SHIFT', action = act.ReloadConfiguration },
+
+  { key = '-', mods = 'CTRL', action = act.DecreaseFontSize },
+  { key = '=', mods = 'CTRL', action = act.IncreaseFontSize },
+  { key = '0', mods = 'CTRL', action = act.ResetFontSize },
+
+  { key = 'F', mods = 'CTRL', action = act.Search { CaseSensitiveString = '' } },
+
+  -- Theme cycling (no OS notifications).
+  { key = 'T', mods = 'CTRL|ALT', action = cycle_theme },
+
+  -- Font cycling (no OS notifications).
+  { key = 'F', mods = 'CTRL|ALT', action = cycle_font },
+
+  -- Borderless toggle (removes the title bar; keeps resizable border).
+  {
+    key = 'B',
+    mods = 'CTRL|ALT',
+    action = wezterm.action_callback(function(window, pane)
+      local overrides = window:get_config_overrides() or {}
+      local current = overrides.window_decorations or pick_default_window_decorations()
+
+      if current == 'RESIZE' then
+        overrides.window_decorations = 'TITLE|RESIZE'
+      else
+        overrides.window_decorations = 'RESIZE'
+      end
+
+      window:set_config_overrides(overrides)
+
+      persisted.window_decorations = overrides.window_decorations
+      save_state(persisted)
+    end),
+  },
+
+  -- Easier window move when borderless (titlebar hidden).
+  { key = 'd', mods = 'CTRL|ALT', action = act.StartWindowDrag },
+}
+
+-- Clipboard paste keybindings:
+-- - Windows: Ctrl+V is paste in most apps, so we bind smart paste there.
+-- - Linux/macOS: preserve Ctrl+V for applications; use the conventional Ctrl+Shift+V for paste.
+if is_windows then
+  table.insert(keys, 2, { key = 'v', mods = 'CTRL', action = smart_paste })
+  table.insert(keys, 3, { key = 'V', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
+else
+  table.insert(keys, 2, { key = 'V', mods = 'CTRL|SHIFT', action = smart_paste })
+  -- A guaranteed plain paste that doesn't depend on shift-state.
+  table.insert(keys, 3, { key = 'v', mods = 'ALT', action = act.PasteFrom 'Clipboard' })
+end
+
 local config = {
   enable_tab_bar = false,
   disable_default_key_bindings = true,
@@ -455,63 +519,7 @@ local config = {
 
   default_cursor_style = 'BlinkingBlock',
 
-  keys = {
-    -- Copy selection (Ctrl+Shift+C). Don't steal Ctrl+C: users need SIGINT in shells/TUIs.
-    { key = 'C', mods = 'CTRL|SHIFT', action = act.CopyTo 'Clipboard' },
-
-    -- Paste: one key, two behaviors
-    { key = 'v', mods = 'CTRL', action = smart_paste },
-
-    -- Keep a guaranteed plain-text paste on Ctrl+Shift+V
-    { key = 'V', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' },
-
-    -- Undo/redo the most recent paste (best-effort).
-    -- Ctrl+Z is `key='z', mods='CTRL'` and Ctrl+Shift+Z is `key='Z', mods='CTRL'`.
-    { key = 'z', mods = 'CTRL', action = undo_paste },
-    { key = 'Z', mods = 'CTRL|SHIFT', action = redo_paste },
-    -- More explicit variants to be resilient to `key_map_preference` and layout differences.
-    { key = 'mapped:z', mods = 'CTRL', action = undo_paste },
-    { key = 'mapped:Z', mods = 'CTRL|SHIFT', action = redo_paste },
-
-    -- Reload config (Ctrl+Shift+R). Don't steal Ctrl+R: shells use it for history search.
-    { key = 'R', mods = 'CTRL|SHIFT', action = act.ReloadConfiguration },
-
-    { key = '-', mods = 'CTRL', action = act.DecreaseFontSize },
-    { key = '=', mods = 'CTRL', action = act.IncreaseFontSize },
-    { key = '0', mods = 'CTRL', action = act.ResetFontSize },
-
-    { key = 'F', mods = 'CTRL', action = act.Search { CaseSensitiveString = '' } },
-
-    -- Theme cycling (no OS notifications).
-    { key = 'T', mods = 'CTRL|ALT', action = cycle_theme },
-
-    -- Font cycling (no OS notifications).
-    { key = 'F', mods = 'CTRL|ALT', action = cycle_font },
-
-    -- Borderless toggle (removes the title bar; keeps resizable border).
-    {
-      key = 'B',
-      mods = 'CTRL|ALT',
-      action = wezterm.action_callback(function(window, pane)
-        local overrides = window:get_config_overrides() or {}
-        local current = overrides.window_decorations or pick_default_window_decorations()
-
-        if current == 'RESIZE' then
-          overrides.window_decorations = 'TITLE|RESIZE'
-        else
-          overrides.window_decorations = 'RESIZE'
-        end
-
-        window:set_config_overrides(overrides)
-
-        persisted.window_decorations = overrides.window_decorations
-        save_state(persisted)
-      end),
-    },
-
-    -- Easier window move when borderless (titlebar hidden).
-    { key = 'd', mods = 'CTRL|ALT', action = act.StartWindowDrag },
-  },
+  keys = keys,
 }
 
 if is_windows then

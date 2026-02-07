@@ -20,9 +20,10 @@ No upstream source code changes are required for these behaviors.
   - Tab bar disabled (`enable_tab_bar = false`)
   - Default shell is PowerShell 7 (`pwsh.exe`) for proper per-user history
 - Smart paste on `Ctrl+V`:
-  - If the Windows clipboard contains an image: forward `Ctrl+V` into the running
-    program (for image-aware TUIs, eg: Codex).
-  - Otherwise: paste text normally from the clipboard.
+  - Windows: `Ctrl+V` is smart paste; if the clipboard contains an image, it
+    forwards `Ctrl+V` into the running program (for image-aware TUIs, eg: Codex).
+  - Linux/macOS: smart paste is bound to `Ctrl+Shift+V` (we preserve `Ctrl+V` for
+    applications); image-forwarding is not attempted.
 - Paste undo:
   - After you paste, press `Ctrl+Z` (within ~30 seconds) to quickly wipe the paste
     without holding Backspace.
