@@ -32,6 +32,10 @@ wezterm-vibe
 
 ## Notes / Troubleshooting
 
+- Paste keybindings:
+  - Linux/macOS: paste is `Ctrl+Shift+V` (smart paste)
+  - Windows: paste is `Ctrl+V` (smart paste)
+
 - Paste-undo on Linux is best-effort and depends on a clipboard helper:
   - Wayland: `wl-clipboard` (`wl-paste`)
   - X11: `xclip` or `xsel`
