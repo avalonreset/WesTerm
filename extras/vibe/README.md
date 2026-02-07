@@ -38,6 +38,11 @@ No upstream source code changes are required for these behaviors.
   - The last selected theme/font are saved to a small state file so they survive
     restarts and crashes: `%USERPROFILE%\\.wezterm-vibe-state.json`.
   - Delete that file to reset back to defaults.
+- Borderless titlebar:
+  - `Ctrl+Alt+B` toggles the title bar off/on (`window_decorations = "RESIZE"` vs
+    `window_decorations = "TITLE|RESIZE"`).
+  - On Windows the titlebar color is managed by the OS; borderless is the reliable
+    way to get a "pure black" top edge.
 
 ## Install
 

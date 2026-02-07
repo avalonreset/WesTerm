@@ -347,6 +347,15 @@ local cycle_font = wezterm.action_callback(function(window, pane)
   save_state(persisted)
 end)
 
+local function pick_default_window_decorations()
+  local deco = persisted and persisted.window_decorations
+  if type(deco) == 'string' and deco ~= '' then
+    return deco
+  end
+  -- Default: keep the normal titlebar+resize border.
+  return 'TITLE|RESIZE'
+end
+
 local config = {
   -- Use PowerShell 7 by default. Command history is a shell feature (PSReadLine),
   -- whereas cmd.exe history is not persisted across sessions by default.
@@ -367,6 +376,11 @@ local config = {
   },
   window_background_opacity = 1.0,
   win32_system_backdrop = 'Disable',
+
+  -- On Windows the native titlebar color is controlled by the OS; if you want
+  -- a "pure black" top edge, the reliable option is to remove the title bar.
+  -- Toggle with Ctrl+Alt+B (see keys below).
+  window_decorations = pick_default_window_decorations(),
 
   default_cursor_style = 'BlinkingBlock',
 
@@ -401,6 +415,27 @@ local config = {
 
     -- Font cycling (no OS notifications).
     { key = 'F', mods = 'CTRL|ALT', action = cycle_font },
+
+    -- Borderless toggle (removes the title bar; keeps resizable border).
+    {
+      key = 'B',
+      mods = 'CTRL|ALT',
+      action = wezterm.action_callback(function(window, pane)
+        local overrides = window:get_config_overrides() or {}
+        local current = overrides.window_decorations or pick_default_window_decorations()
+
+        if current == 'RESIZE' then
+          overrides.window_decorations = 'TITLE|RESIZE'
+        else
+          overrides.window_decorations = 'RESIZE'
+        end
+
+        window:set_config_overrides(overrides)
+
+        persisted.window_decorations = overrides.window_decorations
+        save_state(persisted)
+      end),
+    },
   },
 }
 
