@@ -23,6 +23,9 @@ No upstream source code changes are required for these behaviors.
   - If there is an active selection, `Ctrl+C` copies it (and clears the selection).
   - Otherwise `Ctrl+C` is passed through to the running program (interrupt/SIGINT behavior).
   - `Ctrl+Alt+C` always passes through `Ctrl+C` even if a selection exists.
+- Better font zoom behavior:
+  - Default font size is larger (`16.0` pt; equivalent to hitting `Ctrl++` four times from the default `12.0`).
+  - `Ctrl++`/`Ctrl+-` reflows text without resizing the whole window.
 - Smart paste on `Ctrl+V`:
   - Windows: `Ctrl+V` is smart paste; if the clipboard contains an image, it
     forwards `Ctrl+V` into the running program (for image-aware TUIs, eg: Codex).

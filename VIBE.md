@@ -18,6 +18,9 @@ Highlights:
 
 - Disable the tab bar (`enable_tab_bar = false`) for a cleaner single-terminal UI.
 - Default shell set to PowerShell 7 (`pwsh.exe`) for proper persistent history.
+- Better font zoom behavior:
+  - Default font size is larger (`16.0` pt).
+  - `Ctrl++`/`Ctrl+-` reflows text without resizing the whole window.
 - Smart `Ctrl+V`:
   - Paste text normally when the clipboard holds text.
   - If the clipboard holds an image, forward `Ctrl+V` to the running program so

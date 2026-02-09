@@ -519,6 +519,12 @@ local config = {
 
   -- Font: pick a crisp "hacker" mono with sensible fallbacks.
   font = make_hacker_font(default_font_primary),
+  -- Start larger by default: equivalent to hitting Ctrl++ four times from the
+  -- default 12.0pt size.
+  font_size = 16.0,
+  -- When we change font size, keep the window pixel size fixed; reflow by
+  -- changing rows/cols instead of resizing the whole window.
+  adjust_window_size_when_changing_font_size = false,
   -- Disable ligatures for a more "terminal" look.
   harfbuzz_features = { 'calt=0', 'clig=0', 'liga=0' },
 
