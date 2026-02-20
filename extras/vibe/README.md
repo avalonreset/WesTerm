@@ -1,100 +1,81 @@
-# WezTerm (Vibe QoL)
+# BenjaminTerm Vibe Layer
 
 ```text
- __      __           _______
- \ \    / /__ ____   |_   __ \  ___ _ __ _ __ ___
-  \ \/\/ / _ `(_-<     | |__) |/ _ \ '__| '_ ` _ \
-   \_/\_/\__,_/__/     |  _  /|  __/ |  | | | | | |
-                      _| | \ \ \___|_|  |_| |_| |_|
-                     |____|  \_\
+██████  ███████ ███    ██      ██  █████  ███    ███ ██ ███    ██ ████████ ███████ ██████  ███    ███
+██   ██ ██      ████   ██      ██ ██   ██ ████  ████ ██ ████   ██    ██    ██      ██   ██ ████  ████
+██████  █████   ██ ██  ██      ██ ███████ ██ ████ ██ ██ ██ ██  ██    ██    █████   ██████  ██ ████ ██
+██   ██ ██      ██  ██ ██ ██   ██ ██   ██ ██  ██  ██ ██ ██  ██ ██    ██    ██      ██   ██ ██  ██  ██
+██████  ███████ ██   ████  █████  ██   ██ ██      ██ ██ ██   ████    ██    ███████ ██   ██ ██      ██
 ```
 
-This folder is a small set of Windows-focused quality-of-life tweaks for
-[WezTerm](../../README.md), implemented entirely via WezTerm's Lua configuration API.
+This folder contains the BenjaminTerm quality-of-life config layer:
 
-No upstream source code changes are required for these behaviors.
+- Config file: `extras/vibe/wezterm.lua`
+- Goal: fast, low-friction, hacker-style terminal workflow
+- Priority: Windows first, Linux/macOS supported
 
-## What This Adds
+## Feature Set
 
-- Minimal UI:
-  - Tab bar disabled (`enable_tab_bar = false`)
-  - Default shell is PowerShell 7 (`pwsh.exe`) for proper per-user history
-- Smart copy on `Ctrl+C`:
-  - If there is an active selection, `Ctrl+C` copies it (and clears the selection).
-  - Otherwise `Ctrl+C` is passed through to the running program (interrupt/SIGINT behavior).
-  - `Ctrl+Alt+C` always passes through `Ctrl+C` even if a selection exists.
-- Better font zoom behavior:
-  - Default font size is larger (`16.0` pt; equivalent to hitting `Ctrl++` four times from the default `12.0`).
-  - `Ctrl++`/`Ctrl+-` reflows text without resizing the whole window.
-- Smart paste on `Ctrl+V`:
-  - Windows: `Ctrl+V` is smart paste; if the clipboard contains an image, it
-    forwards `Ctrl+V` into the running program (for image-aware TUIs, eg: Codex).
-  - Linux/macOS: smart paste is bound to `Ctrl+Shift+V` (we preserve `Ctrl+V` for
-    applications); image-forwarding is not attempted.
-- Paste undo:
-  - After you paste, press `Ctrl+Z` (within ~30 seconds) to quickly wipe the paste
-    without holding Backspace.
-  - Redo is best-effort via `Ctrl+Shift+Z` when possible.
-- Theme cycling:
-  - `Ctrl+Alt+T` cycles through a curated set of built-in "hacker-ish" themes and
-    forces a pure black background.
-- Font cycling:
-  - `Ctrl+Alt+F` cycles through a curated set of hacker fonts (installed fonts first).
-  - The list is intentionally limited to fonts already present on this Windows setup
-    plus other freely-available fonts (no paid fonts in the rotation).
-- Persistence:
-  - The last selected theme/font are saved to a small state file so they survive
-    restarts and crashes: `%USERPROFILE%\\.wezterm-vibe-state.json`.
-  - Delete that file to reset back to defaults.
-- Borderless titlebar:
-  - `Ctrl+Alt+B` toggles the title bar off/on (`window_decorations = "RESIZE"` vs
-    `window_decorations = "TITLE|RESIZE"`).
-  - On Windows the titlebar color is managed by the OS; borderless is the reliable
-    way to get a "pure black" top edge.
-  - `Ctrl+Alt+D` triggers `StartWindowDrag` to move the window more easily when
-    the titlebar is hidden.
+- Smart copy behavior on `Ctrl+C`
+- Smart paste behavior by platform
+- Paste undo/redo
+- Theme and font cycling
+- Pure-black visual tuning
+- Borderless mode + drag assist
+- Persistent font/theme/window decoration state
+- Windows toast-click focus workflow for focusable notifications
 
-## Install
+## Hotkeys
 
-### Using This Fork's Windows Distro
+| Action | Hotkey |
+|---|---|
+| Smart copy / pass-through interrupt | `Ctrl+C` |
+| Force pass-through interrupt | `Ctrl+Alt+C` |
+| Smart paste (Windows) | `Ctrl+V` |
+| Plain paste (Windows) | `Ctrl+Shift+V` |
+| Smart paste (Linux/macOS) | `Ctrl+Shift+V` |
+| Plain paste (Linux/macOS) | `Alt+V` |
+| Paste undo | `Ctrl+Z` |
+| Paste redo | `Ctrl+Shift+Z` |
+| Reload config | `Ctrl+Shift+R` |
+| Search | `Ctrl+F` |
+| Font size down/up/reset | `Ctrl+-` / `Ctrl+=` / `Ctrl+0` |
+| Cycle theme | `Ctrl+Alt+T` |
+| Cycle font | `Ctrl+Alt+F` |
+| Toggle borderless | `Ctrl+Alt+B` |
+| Start window drag | `Ctrl+Alt+D` |
 
-Nothing to do: the Windows installer and portable `.zip` bundle the Vibe QoL
-config as `wezterm.lua` next to the executable, so a fresh install starts with:
+## Install Paths
 
-- Color scheme: `Blue Matrix` (pure black background forced)
-- Font: `OCR A Extended` (falls back to Cascadia/JetBrains/Consolas if missing)
+### BenjaminTerm Windows Distro (Primary)
 
-To customize, create a per-user config file; it will override the bundled one:
+- The Windows distro bundles this config as `wezterm.lua` next to the executable.
+- Fresh defaults:
+  - Color scheme: `Blue Matrix` + forced black background.
+  - Font: `OCR A Extended` with fallback chain.
+- Per-user overrides:
+  - `%USERPROFILE%\.wezterm.lua`
+  - `~/.config/wezterm/wezterm.lua`
 
-- Windows: `%USERPROFILE%\.wezterm.lua`
-- Or: `~/.config/wezterm/wezterm.lua`
+### Linux Quick Start
 
-### Using Upstream WezTerm
+Use the bootstrap flow in `extras/vibe/linux/README.md`.
+It installs an AppImage-based launcher command named:
 
-Copy `extras/vibe/wezterm.lua` to your home config path:
+- `benjaminterm`
 
-- Windows: `%USERPROFILE%\.wezterm.lua`
+Backward compatibility alias is also installed when possible:
 
-Then reload WezTerm (`Ctrl+Shift+R`) or restart it.
-
-### Linux (Pop!_OS / Ubuntu) Quick Start
-
-See `extras/vibe/linux/README.md` for a bootstrap script that downloads the
-upstream WezTerm AppImage and runs it pinned to this config.
+- `wezterm-vibe`
 
 ## Notes
 
-- These behaviors are Windows-specific because the clipboard detection uses
-  `powershell.exe Get-Clipboard`. On Linux/macOS, the config intentionally does
-  not attempt to forward `Ctrl+V` into applications when an image is on the
-  clipboard (because `Ctrl+V` can have meaning inside shells/TUIs). Paste-undo
-  is best-effort and depends on a clipboard helper being available (`wl-paste`,
-  `xclip`, `xsel`, `pbpaste`).
-- The paste undo is a pragmatic "clear the paste quickly" feature, not a full
-  editor-grade undo stack.
+- Clipboard image detection uses Windows PowerShell APIs, so image-forwarding
+  smart paste is Windows-only by design.
+- Linux/macOS paste-undo is best effort and depends on clipboard tooling
+  (`wl-paste`, `xclip`, `xsel`, `pbpaste`).
+- This layer intentionally avoids deep source changes wherever possible.
 
-## License / Attribution
+## License
 
-WezTerm is MIT licensed; see `LICENSE.md` at the repository root. This config is
-derived from WezTerm's public configuration interfaces and is intended to be used
-with WezTerm.
+WezTerm is MIT licensed; see `LICENSE.md` at the repository root.

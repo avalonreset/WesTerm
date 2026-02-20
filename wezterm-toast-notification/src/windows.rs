@@ -3,13 +3,13 @@
 use crate::ToastNotification as TN;
 use xml::escape::escape_str_pcdata;
 
-use windows::core::{Error as WinError, IInspectable, Interface, HSTRING};
 use windows::Data::Xml::Dom::XmlDocument;
 use windows::Foundation::TypedEventHandler;
-use windows::Win32::Foundation::E_POINTER;
 use windows::UI::Notifications::{
     ToastActivatedEventArgs, ToastNotification, ToastNotificationManager,
 };
+use windows::Win32::Foundation::E_POINTER;
+use windows::core::{Error as WinError, HSTRING, IInspectable, Interface};
 
 fn unwrap_arg<T>(a: &Option<T>) -> Result<&T, WinError> {
     match a {
@@ -18,8 +18,24 @@ fn unwrap_arg<T>(a: &Option<T>) -> Result<&T, WinError> {
     }
 }
 
+fn escape_str_attribute(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
+}
+
 fn show_notif_impl(toast: TN) -> Result<(), Box<dyn std::error::Error>> {
     let xml = XmlDocument::new()?;
+
+    let launch_argument = toast
+        .click_arguments
+        .as_deref()
+        .or_else(|| toast.url.as_deref().map(|_| "show"));
+    let launch_attr = launch_argument
+        .map(|arg| format!(r#" launch="{}""#, escape_str_attribute(arg)))
+        .unwrap_or_default();
 
     let url_actions = if toast.url.is_some() {
         r#"
@@ -32,7 +48,7 @@ fn show_notif_impl(toast: TN) -> Result<(), Box<dyn std::error::Error>> {
     };
 
     xml.LoadXml(HSTRING::from(format!(
-        r#"<toast duration="long">
+        r#"<toast{} duration="long">
         <visual>
             <binding template="ToastGeneric">
                 <text>{}</text>
@@ -41,6 +57,7 @@ fn show_notif_impl(toast: TN) -> Result<(), Box<dyn std::error::Error>> {
         </visual>
         {}
     </toast>"#,
+        launch_attr,
         escape_str_pcdata(&toast.title),
         escape_str_pcdata(&toast.message),
         url_actions
@@ -53,13 +70,14 @@ fn show_notif_impl(toast: TN) -> Result<(), Box<dyn std::error::Error>> {
             // let myself = unwrap_arg(myself)?;
             let result = unwrap_arg(result)?.cast::<ToastActivatedEventArgs>()?;
 
-            let args = result.Arguments()?;
+            let args = result.Arguments()?.to_string();
 
             if args == "show" {
                 if let Some(url) = toast.url.as_ref() {
                     wezterm_open_url::open_url(url);
                 }
             }
+            crate::dispatch_toast_activation(args);
 
             Ok(())
         },

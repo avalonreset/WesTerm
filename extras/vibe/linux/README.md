@@ -1,52 +1,49 @@
-# WezTerm Vibe QoL on Pop!_OS (Linux)
+# BenjaminTerm Linux Bootstrap (Pop!_OS / Ubuntu)
 
-Pop!_OS is an Ubuntu-based Linux distribution from System76.
+BenjaminTerm is Windows-first, but this bootstrap flow gives Linux users a clean,
+portable launcher with the same vibe config.
 
-This repo ships a "Vibe QoL" config (`extras/vibe/wezterm.lua`) that works on
-Linux/macOS/Windows. The easiest, most reliable way to test it on Pop!_OS is to
-use the upstream WezTerm AppImage with a wrapper that pins the config file.
-
-## Quick Start (Recommended)
-
-1. Clone this repo.
-2. Run the bootstrap script:
+## Quick Start
 
 ```sh
 cd extras/vibe/linux
 ./bootstrap-popos.sh
 ```
 
-It will:
+The script will:
 
 - Download the latest stable upstream WezTerm `.AppImage`
-- Install a small portable folder at `~/.local/opt/wezterm-vibe`
-- Write `wezterm.lua` (the Vibe QoL config) into that folder
-- Extract the AppImage (avoids FUSE dependency at runtime)
-- Create `~/.local/bin/wezterm-vibe` (a wrapper command) if possible
+- Install a portable folder at `~/.local/opt/benjaminterm`
+- Copy config to `benjaminterm.lua`
+- Extract the AppImage (no runtime FUSE dependency)
+- Create launcher command:
+  - `~/.local/bin/benjaminterm`
+- Try to create compatibility alias:
+  - `~/.local/bin/wezterm-vibe`
 
-Then launch with:
+Launch with:
 
 ```sh
-wezterm-vibe
+benjaminterm
 ```
 
-## Notes / Troubleshooting
+## Feature Expectations on Linux
 
-- Paste keybindings:
-  - Linux/macOS: paste is `Ctrl+Shift+V` (smart paste)
-  - Windows: paste is `Ctrl+V` (smart paste)
+- Smart paste uses `Ctrl+Shift+V` (Linux/macOS convention).
+- Theme cycle: `Ctrl+Alt+T`.
+- Font cycle: `Ctrl+Alt+F`.
+- Borderless toggle: `Ctrl+Alt+B`.
+- Paste undo is best effort and depends on clipboard helpers.
 
-- Paste-undo on Linux is best-effort and depends on a clipboard helper:
-  - Wayland: `wl-clipboard` (`wl-paste`)
-  - X11: `xclip` or `xsel`
-
-Install one:
+Install helpers:
 
 ```sh
 sudo apt-get update
 sudo apt-get install -y wl-clipboard xclip xsel
 ```
 
-- Font: the default distro font is `OCR A Extended` (matches Windows vibe), but it
-  may not be installed on Linux. The config will fall back to common monospace
-  fonts (`DejaVu Sans Mono`, `monospace`, etc.), so it will still work.
+## Notes
+
+- The config is shared across Windows/Linux/macOS, but some behavior is intentionally
+  Windows-optimized (for example image-aware paste forwarding and native toast workflow).
+- Font fallback is automatic if `OCR A Extended` is not installed.

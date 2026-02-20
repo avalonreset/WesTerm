@@ -34,16 +34,17 @@ here_dir() {
 REPO_ROOT="$(cd -- "$(here_dir)/../../.." && pwd)"
 VIBE_SRC="$REPO_ROOT/extras/vibe/wezterm.lua"
 
-INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/opt/wezterm-vibe}"
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/opt/benjaminterm}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 
-APPIMAGE="$INSTALL_DIR/WezTerm.AppImage"
-CFG="$INSTALL_DIR/wezterm.lua"
+APPIMAGE="$INSTALL_DIR/BenjaminTerm.AppImage"
+CFG="$INSTALL_DIR/benjaminterm.lua"
 ROOT="$INSTALL_DIR/squashfs-root"
 GUI_BIN="$ROOT/usr/bin/wezterm-gui"
 CLI_BIN="$ROOT/usr/bin/wezterm"
-WRAPPER="$INSTALL_DIR/wezterm-vibe"
-BIN_LINK="$BIN_DIR/wezterm-vibe"
+WRAPPER="$INSTALL_DIR/benjaminterm"
+BIN_LINK="$BIN_DIR/benjaminterm"
+COMPAT_BIN_LINK="$BIN_DIR/wezterm-vibe"
 
 mkdir -p "$INSTALL_DIR"
 
@@ -157,7 +158,7 @@ cat >"$WRAPPER" <<'SH'
 #!/usr/bin/env sh
 set -eu
 DIR=$(cd -- "$(dirname -- "$0")" && pwd)
-CFG="$DIR/wezterm.lua"
+CFG="$DIR/benjaminterm.lua"
 GUI="$DIR/squashfs-root/usr/bin/wezterm-gui"
 CLI="$DIR/squashfs-root/usr/bin/wezterm"
 
@@ -190,11 +191,17 @@ else
   say "You can run directly: $WRAPPER"
 fi
 
+if ln -sf "$WRAPPER" "$COMPAT_BIN_LINK" 2>/dev/null; then
+  say "Linked compatibility alias: $COMPAT_BIN_LINK"
+else
+  say "note: couldn't link compatibility alias $COMPAT_BIN_LINK"
+fi
+
 detect_os
 
 say ""
 say "Next:"
-say "  wezterm-vibe"
+say "  benjaminterm"
 if ! have_path_entry "$BIN_DIR"; then
   say ""
   say "note: $BIN_DIR is not in PATH in this shell."

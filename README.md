@@ -1,52 +1,105 @@
-# Wez's Terminal
+# BenjaminTerm
 
-<img height="128" alt="WezTerm Icon" src="https://raw.githubusercontent.com/wezterm/wezterm/main/assets/icon/wezterm-icon.svg" align="left"> *A GPU-accelerated cross-platform terminal emulator and multiplexer written by <a href="https://github.com/wez">@wez</a> and implemented in <a href="https://www.rust-lang.org/">Rust</a>*
+```text
+██████  ███████ ███    ██      ██  █████  ███    ███ ██ ███    ██ ████████ ███████ ██████  ███    ███
+██   ██ ██      ████   ██      ██ ██   ██ ████  ████ ██ ████   ██    ██    ██      ██   ██ ████  ████
+██████  █████   ██ ██  ██      ██ ███████ ██ ████ ██ ██ ██ ██  ██    ██    █████   ██████  ██ ████ ██
+██   ██ ██      ██  ██ ██ ██   ██ ██   ██ ██  ██  ██ ██ ██  ██ ██    ██    ██      ██   ██ ██  ██  ██
+██████  ███████ ██   ████  █████  ██   ██ ██      ██ ██ ██   ████    ██    ███████ ██   ██ ██      ██
+```
 
-## Fork Notes (Vibe QoL)
+Windows-first, hacker-styled terminal distro powered by WezTerm.
 
-This fork adds a Windows-focused "Vibe QoL" experience (smart paste, paste-undo, tabless UI, `pwsh` default) primarily via WezTerm's Lua config API, plus a small Windows config-loading tweak so the distro can ship a sane default out-of-the-box.
+BenjaminTerm keeps upstream WezTerm power, then adds quality-of-life workflows for fast coding sessions:
+smart copy/paste behavior, paste undo, font/theme cycling, borderless mode, persistent preferences, and now
+click-to-focus Windows notifications when your coding tool asks for input.
 
-- See `extras/vibe/README.md`
-- Config file: `extras/vibe/wezterm.lua`
-- Windows distro: the installer and portable `.zip` bundle `wezterm.lua` next to the executable
-- Override: per-user config (`%USERPROFILE%\\.wezterm.lua` or `~/.config/wezterm/wezterm.lua`) still wins
-- Defaults (fresh install): color scheme `Blue Matrix` (pure black background forced)
-- Defaults (fresh install): font `OCR A Extended` (with fallbacks to Cascadia/JetBrains/Consolas)
-- Linux (Pop!_OS/Ubuntu): see `extras/vibe/linux/README.md` for a bootstrap AppImage-based setup
+## Why BenjaminTerm
 
-User facing docs and guide at: https://wezterm.org/
+- Primary target: Windows developer workflow.
+- Secondary target: Linux friend-ready bootstrap distro.
+- Sensible defaults out of the box:
+  - Color scheme: `Blue Matrix` with forced pure black background.
+  - Font: `OCR A Extended` with robust fallbacks.
+  - Shell (Windows): `pwsh.exe`.
+- Minimal UI:
+  - Tab bar off.
+  - Borderless toggle hotkey.
 
-![Screenshot](docs/screenshots/two.png)
+## Signature Features
 
-*Screenshot of wezterm on macOS, running vim*
+- Smart `Ctrl+C`:
+  - If text is selected, copy it and clear selection.
+  - If not selected, pass through real `Ctrl+C` (interrupt behavior).
+- Smart paste:
+  - Windows: `Ctrl+V`.
+  - Linux/macOS: `Ctrl+Shift+V`.
+- Paste undo/redo:
+  - `Ctrl+Z` undo recent paste.
+  - `Ctrl+Shift+Z` redo (best effort).
+- Fast visual tuning:
+  - `Ctrl+Alt+T` cycle color themes.
+  - `Ctrl+Alt+F` cycle fonts.
+- Borderless “black glass” mode:
+  - `Ctrl+Alt+B` toggle title bar.
+  - `Ctrl+Alt+D` drag window when borderless.
+- Notification workflow boost:
+  - Windows toast click now focuses the exact terminal pane/tab/window that raised it.
 
-## Installation
+Full config docs: `extras/vibe/README.md`
 
-https://wezterm.org/installation
+## Hotkeys
 
-## Getting help
+| Action | Hotkey |
+|---|---|
+| Smart copy / pass-through interrupt | `Ctrl+C` |
+| Force pass-through interrupt | `Ctrl+Alt+C` |
+| Smart paste (Windows) | `Ctrl+V` |
+| Plain paste (Windows) | `Ctrl+Shift+V` |
+| Smart paste (Linux/macOS) | `Ctrl+Shift+V` |
+| Plain paste (Linux/macOS) | `Alt+V` |
+| Paste undo | `Ctrl+Z` |
+| Paste redo | `Ctrl+Shift+Z` |
+| Reload config | `Ctrl+Shift+R` |
+| Search | `Ctrl+F` |
+| Font size down/up/reset | `Ctrl+-` / `Ctrl+=` / `Ctrl+0` |
+| Cycle theme | `Ctrl+Alt+T` |
+| Cycle font | `Ctrl+Alt+F` |
+| Toggle borderless | `Ctrl+Alt+B` |
+| Start window drag | `Ctrl+Alt+D` |
 
-This is a spare time project, so please bear with me.  There are a couple of channels for support:
+## Install
 
-* You can use the [GitHub issue tracker](https://github.com/wezterm/wezterm/issues) to see if someone else has a similar issue, or to file a new one.
-* Start or join a thread in our [GitHub Discussions](https://github.com/wezterm/wezterm/discussions); if you have general
-  questions or want to chat with other wezterm users, you're welcome here!
-* There is a [Matrix room via Element.io](https://app.element.io/#/room/#wezterm:matrix.org)
-  for (potentially!) real time discussions.
+### Windows (Primary)
 
-The GitHub Discussions and Element/Gitter rooms are better suited for questions
-than bug reports, but don't be afraid to use whichever you are most comfortable
-using and we'll work it out.
+- Use this fork's Windows installer or portable zip release.
+- The distro bundles the vibe config next to the executable as `wezterm.lua`.
+- Per-user override still wins:
+  - `%USERPROFILE%\\.wezterm.lua`
+  - `~/.config/wezterm/wezterm.lua`
 
-## Supporting the Project
+### Linux (Friend Mode)
 
-If you use and like WezTerm, please consider sponsoring it: your support helps
-to cover the fees required to maintain the project and to validate the time
-spent working on it!
+- Bootstrap docs: `extras/vibe/linux/README.md`
+- Quick run:
+  - `cd extras/vibe/linux`
+  - `./bootstrap-popos.sh`
+  - `benjaminterm`
 
-[Read more about sponsoring](https://wezterm.org/sponsor.html).
+## Build + Release Prep
 
-* [![Sponsor WezTerm](https://img.shields.io/github/sponsors/wez?label=Sponsor%20WezTerm&logo=github&style=for-the-badge)](https://github.com/sponsors/wez)
-* [Patreon](https://patreon.com/WezFurlong)
-* [Ko-Fi](https://ko-fi.com/wezfurlong)
-* [Liberapay](https://liberapay.com/wez)
+- Release checklist: `RELEASING_BENJAMINTERM.md`
+- This covers:
+  - local validation,
+  - Windows packaging guidance,
+  - Linux bootstrap distribution notes,
+  - GitHub release prep sequence.
+
+## Upstream Credit
+
+BenjaminTerm is a custom distribution/fork built on top of WezTerm.
+
+- Upstream project: https://github.com/wez/wezterm
+- Upstream docs: https://wezterm.org/
+
+WezTerm is MIT licensed; see `LICENSE.md`.

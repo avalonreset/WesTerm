@@ -439,6 +439,7 @@ impl FallbackResolveInfo {
                         fallback_str.escape_unicode()
                     ),
                     url: Some(url.to_string()),
+                    click_arguments: None,
                     timeout: Some(Duration::from_secs(15)),
                 }
                 .show();
