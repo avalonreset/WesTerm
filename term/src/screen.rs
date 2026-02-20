@@ -189,126 +189,6 @@ impl Screen {
         adjusted_cursor
     }
 
-    /// Rewrap only the currently visible viewport lines.
-    ///
-    /// This is used for ConPTY on the primary screen: preserve scrollback
-    /// history as-is, but keep the on-screen block geometrically consistent
-    /// across width changes.
-    fn rewrap_visible_lines(
-        &mut self,
-        physical_cols: usize,
-        physical_rows: usize,
-        cursor_x: usize,
-        cursor_y: PhysRowIndex,
-        seqno: SequenceNo,
-    ) -> (usize, PhysRowIndex) {
-        let visible_start = self.lines.len().saturating_sub(self.physical_rows);
-        let mut prefix = VecDeque::with_capacity(self.lines.len());
-        for _ in 0..visible_start {
-            if let Some(line) = self.lines.pop_front() {
-                prefix.push_back(line);
-            }
-        }
-
-        let mut rewrapped = VecDeque::new();
-        let mut logical_line: Option<Line> = None;
-        let mut logical_cursor_x: Option<usize> = None;
-        let mut adjusted_cursor = (cursor_x, cursor_y);
-
-        for (vis_idx, mut line) in self.lines.drain(..).enumerate() {
-            let phys_idx = visible_start + vis_idx;
-            line.update_last_change_seqno(seqno);
-            // Avoid joining with an off-screen predecessor when the first
-            // visible line starts inside scrollback.
-            let was_wrapped = line.last_cell_was_wrapped() && !(vis_idx == 0 && visible_start > 0);
-
-            if line.last_cell_was_wrapped() {
-                line.set_last_cell_was_wrapped(false, seqno);
-            }
-
-            let line = match logical_line.take() {
-                None => {
-                    if phys_idx == cursor_y {
-                        logical_cursor_x = Some(cursor_x);
-                    }
-                    line
-                }
-                Some(mut prior) => {
-                    if phys_idx == cursor_y {
-                        logical_cursor_x = Some(cursor_x + prior.len());
-                    }
-                    prior.append_line(line, seqno);
-                    prior
-                }
-            };
-
-            if was_wrapped {
-                logical_line.replace(line);
-                continue;
-            }
-
-            if let Some(x) = logical_cursor_x.take() {
-                let num_lines = x / physical_cols;
-                let last_x = x - (num_lines * physical_cols);
-                adjusted_cursor = (last_x, visible_start + rewrapped.len() + num_lines);
-
-                if adjusted_cursor.0 == 0 && adjusted_cursor.1 > 0 {
-                    if physical_cols < self.physical_cols {
-                        adjusted_cursor.0 = cursor_x;
-                    } else {
-                        adjusted_cursor.0 = physical_cols;
-                    }
-                    adjusted_cursor.1 -= 1;
-                }
-            }
-
-            if line.len() <= physical_cols {
-                rewrapped.push_back(line);
-            } else {
-                for wrapped in line.wrap(physical_cols, seqno) {
-                    rewrapped.push_back(wrapped);
-                }
-            }
-        }
-
-        if let Some(line) = logical_line.take() {
-            if let Some(x) = logical_cursor_x.take() {
-                let num_lines = x / physical_cols;
-                let last_x = x - (num_lines * physical_cols);
-                adjusted_cursor = (last_x, visible_start + rewrapped.len() + num_lines);
-
-                if adjusted_cursor.0 == 0 && adjusted_cursor.1 > 0 {
-                    if physical_cols < self.physical_cols {
-                        adjusted_cursor.0 = cursor_x;
-                    } else {
-                        adjusted_cursor.0 = physical_cols;
-                    }
-                    adjusted_cursor.1 -= 1;
-                }
-            }
-
-            if line.len() <= physical_cols {
-                rewrapped.push_back(line);
-            } else {
-                for wrapped in line.wrap(physical_cols, seqno) {
-                    rewrapped.push_back(wrapped);
-                }
-            }
-        }
-
-        prefix.append(&mut rewrapped);
-        self.lines = prefix;
-
-        let capacity = physical_rows + self.scrollback_size();
-        while self.lines.len() > capacity
-            && self.lines.back().map(Line::is_whitespace).unwrap_or(false)
-        {
-            self.lines.pop_back();
-        }
-
-        adjusted_cursor
-    }
-
     /// Resize the physical, viewable portion of the screen
     pub fn resize(
         &mut self,
@@ -335,15 +215,12 @@ impl Screen {
         // pre-prune blank lines that range from the cursor position to the end of the display;
         // this avoids growing the scrollback size when rapidly switching between normal and
         // maximized states.
-        let mut cursor_phys = self.phys_row(cursor.y);
+        let cursor_phys = self.phys_row(cursor.y);
         for _ in cursor_phys + 1..self.lines.len() {
             if self.lines.back().map(Line::is_whitespace).unwrap_or(false) {
                 self.lines.pop_back();
             }
         }
-        // Pruning can change self.lines.len(), so recompute the physical
-        // cursor row before any resize math that depends on it.
-        cursor_phys = self.phys_row(cursor.y);
 
         let (cursor_x, cursor_y) = if physical_cols != self.physical_cols {
             // Check to see if we need to rewrap lines that were
@@ -357,18 +234,21 @@ impl Screen {
             // On Windows ConPTY, wrapped-line metadata is not consistently
             // reliable, which can lead to duplicated/jumbled lines when we
             // attempt to reflow the scrollback on a narrow resize.
-            // Rewrap only the visible viewport there.
+            // Prefer simple width adjustment there instead of rewrap.
             if self.allow_scrollback && !is_conpty {
                 self.rewrap_lines(physical_cols, physical_rows, cursor.x, cursor_phys, seqno)
-            } else if self.allow_scrollback && is_conpty {
-                self.rewrap_visible_lines(physical_cols, physical_rows, cursor.x, cursor_phys, seqno)
             } else {
                 // Full-screen apps in the alternate screen expect the visible
                 // cell matrix to match the new width immediately on shrink.
                 // Keep the ConPTY "preserve line content" behavior scoped to
                 // the primary screen where scrollback reflow is relevant.
                 for line in &mut self.lines {
-                    if physical_cols < self.physical_cols {
+                    if is_conpty && self.allow_scrollback {
+                        // Preserve full line content on ConPTY when changing width.
+                        // Reflow metadata can be unreliable there, but truncating
+                        // here causes irreversible data loss when narrowing.
+                        line.update_last_change_seqno(seqno);
+                    } else if physical_cols < self.physical_cols {
                         // Do a simple prune of the lines instead
                         line.resize(physical_cols, seqno);
                     } else {
