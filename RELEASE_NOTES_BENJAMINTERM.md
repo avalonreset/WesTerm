@@ -10,6 +10,7 @@ This release includes:
 - Windows toast click-to-focus workflow (click notification -> jump to the right terminal pane/window)
 - Linux friend-ready bootstrap flow with `benjaminterm` launcher
 - Curated hotkeys and defaults documented for quick onboarding
+- New custom BEN icon theme (blood-red square mark) across runtime + installer
 
 ## Why This Release Matters
 

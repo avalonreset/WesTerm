@@ -45,6 +45,8 @@ click-to-focus Windows notifications when your coding tool asks for input.
   - `Ctrl+Alt+D` drag window when borderless.
 - Notification workflow boost:
   - Windows toast click now focuses the exact terminal pane/tab/window that raised it.
+- Custom brand icon:
+  - New square blood-red `BEN` icon applied to app/runtime/installer branding.
 
 Full config docs: `extras/vibe/README.md`
 
