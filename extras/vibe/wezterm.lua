@@ -601,7 +601,9 @@ if is_windows then
   config.default_prog = { 'pwsh.exe', '-NoLogo' }
   config.win32_system_backdrop = 'Disable'
 
-  config.front_end = env_front_end or 'WebGpu'
+  -- Default to OpenGL for maximum resize stability.
+  -- WebGpu remains available via BENJAMINTERM_FRONT_END/WEZTERM_FRONT_END.
+  config.front_end = env_front_end or 'OpenGL'
   if config.front_end == 'WebGpu' then
     config.webgpu_power_preference = 'HighPerformance'
   end
