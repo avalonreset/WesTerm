@@ -1075,12 +1075,14 @@ fn test_resize_conpty_shrink_and_grow_preserves_content() {
         line!(),
         &["some long long text", "", "", ""],
     );
+    term.assert_cursor_pos(num_cols - 1, 0, None, Some(term.cursor_pos().seqno));
 
     term.resize(TerminalSize {
         rows: num_lines,
         cols: num_cols - 2,
         ..Default::default()
     });
+    term.assert_cursor_pos(1, 1, None, Some(term.cursor_pos().seqno));
 
     term.resize(TerminalSize {
         rows: num_lines,
@@ -1093,6 +1095,21 @@ fn test_resize_conpty_shrink_and_grow_preserves_content() {
         line!(),
         &["some long long text", "", "", ""],
     );
+    term.assert_cursor_pos(num_cols - 1, 0, None, Some(term.cursor_pos().seqno));
+
+    // Repeating the cycle should keep the cursor stable.
+    term.resize(TerminalSize {
+        rows: num_lines,
+        cols: num_cols - 2,
+        ..Default::default()
+    });
+    term.assert_cursor_pos(1, 1, None, Some(term.cursor_pos().seqno));
+    term.resize(TerminalSize {
+        rows: num_lines,
+        cols: num_cols,
+        ..Default::default()
+    });
+    term.assert_cursor_pos(num_cols - 1, 0, None, Some(term.cursor_pos().seqno));
 }
 
 #[test]

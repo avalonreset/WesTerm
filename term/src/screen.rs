@@ -335,12 +335,15 @@ impl Screen {
         // pre-prune blank lines that range from the cursor position to the end of the display;
         // this avoids growing the scrollback size when rapidly switching between normal and
         // maximized states.
-        let cursor_phys = self.phys_row(cursor.y);
+        let mut cursor_phys = self.phys_row(cursor.y);
         for _ in cursor_phys + 1..self.lines.len() {
             if self.lines.back().map(Line::is_whitespace).unwrap_or(false) {
                 self.lines.pop_back();
             }
         }
+        // Pruning can change self.lines.len(), so recompute the physical
+        // cursor row before any resize math that depends on it.
+        cursor_phys = self.phys_row(cursor.y);
 
         let (cursor_x, cursor_y) = if physical_cols != self.physical_cols {
             // Check to see if we need to rewrap lines that were
