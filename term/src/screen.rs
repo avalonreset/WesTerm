@@ -189,56 +189,6 @@ impl Screen {
         adjusted_cursor
     }
 
-    /// Rewrap each physical line independently.
-    ///
-    /// This is used for ConPTY narrow resizes where wrapped-line metadata
-    /// can be unreliable; it avoids joining adjacent lines before wrapping.
-    fn rewrap_individual_lines(
-        &mut self,
-        physical_cols: usize,
-        physical_rows: usize,
-        cursor_x: usize,
-        cursor_y: PhysRowIndex,
-        seqno: SequenceNo,
-    ) -> (usize, PhysRowIndex) {
-        let mut rewrapped = VecDeque::new();
-        let mut adjusted_cursor = (cursor_x, cursor_y);
-
-        for (phys_idx, mut line) in self.lines.drain(..).enumerate() {
-            line.update_last_change_seqno(seqno);
-
-            if phys_idx == cursor_y {
-                let num_lines = cursor_x / physical_cols;
-                let last_x = cursor_x - (num_lines * physical_cols);
-                adjusted_cursor = (last_x, rewrapped.len() + num_lines);
-
-                // Preserve wrapped-line association when we land at col 0.
-                if adjusted_cursor.0 == 0 && adjusted_cursor.1 > 0 {
-                    adjusted_cursor.0 = cursor_x;
-                    adjusted_cursor.1 -= 1;
-                }
-            }
-
-            if line.len() <= physical_cols {
-                rewrapped.push_back(line);
-            } else {
-                for wrapped in line.wrap(physical_cols, seqno) {
-                    rewrapped.push_back(wrapped);
-                }
-            }
-        }
-        self.lines = rewrapped;
-
-        let capacity = physical_rows + self.scrollback_size();
-        while self.lines.len() > capacity
-            && self.lines.back().map(Line::is_whitespace).unwrap_or(false)
-        {
-            self.lines.pop_back();
-        }
-
-        adjusted_cursor
-    }
-
     /// Resize the physical, viewable portion of the screen
     pub fn resize(
         &mut self,
@@ -284,23 +234,15 @@ impl Screen {
             // On Windows ConPTY, wrapped-line metadata is not consistently
             // reliable, which can lead to duplicated/jumbled lines when we
             // attempt to reflow the scrollback on a narrow resize.
-            // Avoid joining lines there; independently wrap each physical
-            // line on shrink to preserve content without metadata reflow.
+            // Prefer simple width adjustment there instead of rewrap.
             if self.allow_scrollback && !is_conpty {
                 self.rewrap_lines(physical_cols, physical_rows, cursor.x, cursor_phys, seqno)
-            } else if self.allow_scrollback && is_conpty && physical_cols < self.physical_cols {
-                self.rewrap_individual_lines(
-                    physical_cols,
-                    physical_rows,
-                    cursor.x,
-                    cursor_phys,
-                    seqno,
-                )
             } else {
                 for line in &mut self.lines {
                     if is_conpty {
                         // Preserve full line content on ConPTY when changing width.
-                        // We handle narrowing above for the primary screen.
+                        // Reflow metadata can be unreliable there, but truncating
+                        // here causes irreversible data loss when narrowing.
                         line.update_last_change_seqno(seqno);
                     } else if physical_cols < self.physical_cols {
                         // Do a simple prune of the lines instead
