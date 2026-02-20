@@ -13,6 +13,10 @@ click-to-focus Windows notifications when your coding tool asks for input.
 /____/___/_/|_/\___/_/ |_/_/  /_/___/_/|_/ /_/ /___/_/|_/_/  /_/
 ```
 
+## Screenshot Preview
+
+![BenjaminTerm terminal preview](assets/icon/benjaminterm_screenshot.jpg)
+
 ## Why BenjaminTerm
 
 - Primary target: Windows developer workflow.
