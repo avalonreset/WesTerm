@@ -44,6 +44,9 @@ click-to-focus Windows notifications when your coding tool asks for input.
   - `Ctrl+Alt+D` (or `Ctrl+Alt+Shift+D`) drag window when borderless.
 - Notification workflow boost:
   - Windows toast click now focuses the exact terminal pane/tab/window that raised it.
+- Resize stability tuning:
+  - Windows defaults to `WebGpu` renderer for smoother live window reshaping.
+  - Override renderer with env var: `BENJAMINTERM_FRONT_END=OpenGL|WebGpu|Software`.
 - Custom brand icon:
   - New square blood-red `BEN` icon applied to app/runtime/installer branding.
 - Side-by-side install support:

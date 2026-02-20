@@ -24,6 +24,8 @@ This folder contains the BenjaminTerm quality-of-life config layer:
 - Borderless mode + drag assist
 - Persistent font/theme/window decoration state
 - Windows toast-click focus workflow for focusable notifications
+- Windows defaults to `WebGpu` renderer for smoother live reshape behavior
+  - override with `BENJAMINTERM_FRONT_END=OpenGL|WebGpu|Software`
 
 ## Hotkeys
 

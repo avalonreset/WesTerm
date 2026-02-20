@@ -4,6 +4,23 @@ local act = wezterm.action
 local target = wezterm.target_triple or ''
 local is_windows = target:find('windows', 1, true) ~= nil
 
+local function normalize_front_end_name(value)
+  if type(value) ~= 'string' or value == '' then
+    return nil
+  end
+  local v = value:gsub('%s+', ''):lower()
+  if v == 'webgpu' or v == 'wgpu' then
+    return 'WebGpu'
+  end
+  if v == 'opengl' or v == 'gl' then
+    return 'OpenGL'
+  end
+  if v == 'software' or v == 'cpu' then
+    return 'Software'
+  end
+  return nil
+end
+
 local paste_undo_window_seconds = 30
 local paste_undo_max_chars = 200000
 local paste_undo_fallback_chars = 50000
@@ -569,11 +586,27 @@ local config = {
   keys = keys,
 }
 
+-- Rendering path:
+-- This repository's default front-end is OpenGL. On Windows, live reshaping
+-- can be smoother with WebGpu on modern drivers.
+-- Override via env var:
+--   BENJAMINTERM_FRONT_END=OpenGL|WebGpu|Software
+local env_front_end =
+  normalize_front_end_name(os.getenv 'BENJAMINTERM_FRONT_END')
+  or normalize_front_end_name(os.getenv 'WEZTERM_FRONT_END')
+
 if is_windows then
   -- Use PowerShell 7 by default on Windows. Command history is a shell feature (PSReadLine),
   -- whereas cmd.exe history is not persisted across sessions by default.
   config.default_prog = { 'pwsh.exe', '-NoLogo' }
   config.win32_system_backdrop = 'Disable'
+
+  config.front_end = env_front_end or 'WebGpu'
+  if config.front_end == 'WebGpu' then
+    config.webgpu_power_preference = 'HighPerformance'
+  end
+elseif env_front_end then
+  config.front_end = env_front_end
 end
 
 return config
