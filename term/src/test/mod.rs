@@ -1092,7 +1092,41 @@ fn test_resize_conpty_shrink_and_grow_preserves_content() {
         &term,
         file!(),
         line!(),
+        &["some long long tex", "t", "", ""],
+    );
+}
+
+#[test]
+fn test_resize_conpty_grow_then_shrink_wraps_instead_of_clipping() {
+    let num_lines = 4;
+    let num_cols = 20;
+
+    let mut term = TestTerm::new(num_lines, num_cols, 0);
+    term.enable_conpty_quirks();
+    term.print("some long long text");
+    assert_visible_contents(
+        &term,
+        file!(),
+        line!(),
         &["some long long text", "", "", ""],
+    );
+
+    term.resize(TerminalSize {
+        rows: num_lines,
+        cols: num_cols + 4,
+        ..Default::default()
+    });
+
+    term.resize(TerminalSize {
+        rows: num_lines,
+        cols: num_cols - 2,
+        ..Default::default()
+    });
+    assert_visible_contents(
+        &term,
+        file!(),
+        line!(),
+        &["some long long tex", "t", "", ""],
     );
 }
 
