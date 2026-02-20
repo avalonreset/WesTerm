@@ -30,7 +30,7 @@ This folder contains the BenjaminTerm quality-of-life config layer:
 | Action | Hotkey |
 |---|---|
 | Smart copy / pass-through interrupt | `Ctrl+C` |
-| Force pass-through interrupt | `Ctrl+Alt+C` |
+| Force pass-through interrupt | `Ctrl+Alt+C` or `Ctrl+Alt+Shift+C` |
 | Smart paste (Windows) | `Ctrl+V` |
 | Plain paste (Windows) | `Ctrl+Shift+V` |
 | Smart paste (Linux/macOS) | `Ctrl+Shift+V` |
@@ -40,12 +40,12 @@ This folder contains the BenjaminTerm quality-of-life config layer:
 | Reload config | `Ctrl+Shift+R` |
 | Search | `Ctrl+F` |
 | Font size down/up/reset | `Ctrl+-` / `Ctrl+=` / `Ctrl+0` |
-| Cycle theme | `Ctrl+Alt+T` |
-| Cycle font | `Ctrl+Alt+F` |
-| Toggle borderless | `Ctrl+Alt+B` |
-| Start window drag | `Ctrl+Alt+D` |
+| Cycle theme | `Ctrl+Alt+T` or `Ctrl+Alt+Shift+T` |
+| Cycle font | `Ctrl+Alt+F` or `Ctrl+Alt+Shift+F` |
+| Toggle borderless | `Ctrl+Alt+B` or `Ctrl+Alt+Shift+B` |
+| Start window drag | `Ctrl+Alt+D` or `Ctrl+Alt+Shift+D` |
 
-If `Shift` is required, it is shown explicitly in the hotkey (for example `Ctrl+Shift+R`).
+Letter hotkeys accept both Shift and non-Shift variants, so Caps Lock won't break them.
 
 ## Install Paths
 

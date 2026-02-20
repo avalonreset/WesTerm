@@ -432,6 +432,22 @@ local function pick_default_window_decorations()
   return 'TITLE|RESIZE'
 end
 
+local toggle_borderless = wezterm.action_callback(function(window, pane)
+  local overrides = window:get_config_overrides() or {}
+  local current = overrides.window_decorations or pick_default_window_decorations()
+
+  if current == 'RESIZE' then
+    overrides.window_decorations = 'TITLE|RESIZE'
+  else
+    overrides.window_decorations = 'RESIZE'
+  end
+
+  window:set_config_overrides(overrides)
+
+  persisted.window_decorations = overrides.window_decorations
+  save_state(persisted)
+end)
+
 local keys = {
   -- Ctrl+C: if there is a selection, copy it. Otherwise, send Ctrl+C to the app (SIGINT).
   -- This avoids the "I tried to copy and it killed my session" footgun.
@@ -458,47 +474,53 @@ local keys = {
   { key = 'mapped:Z', mods = 'CTRL|SHIFT', action = redo_paste },
 
   -- Reload config (Ctrl+Shift+R). Don't steal Ctrl+R: shells use it for history search.
+  -- Bind both shifted/mapped variants so Caps Lock/layout quirks don't break it.
   { key = 'r', mods = 'CTRL|SHIFT', action = act.ReloadConfiguration },
+  { key = 'R', mods = 'CTRL|SHIFT', action = act.ReloadConfiguration },
+  { key = 'mapped:r', mods = 'CTRL|SHIFT', action = act.ReloadConfiguration },
+  { key = 'mapped:R', mods = 'CTRL|SHIFT', action = act.ReloadConfiguration },
 
   { key = '-', mods = 'CTRL', action = act.DecreaseFontSize },
   { key = '=', mods = 'CTRL', action = act.IncreaseFontSize },
   { key = '0', mods = 'CTRL', action = act.ResetFontSize },
 
+  -- Letter hotkeys intentionally bind shifted + mapped variants to be resilient
+  -- to Caps Lock and layout translation behavior.
   { key = 'f', mods = 'CTRL', action = act.Search { CaseSensitiveString = '' } },
+  { key = 'mapped:f', mods = 'CTRL', action = act.Search { CaseSensitiveString = '' } },
+  { key = 'F', mods = 'CTRL|SHIFT', action = act.Search { CaseSensitiveString = '' } },
+  { key = 'mapped:F', mods = 'CTRL|SHIFT', action = act.Search { CaseSensitiveString = '' } },
 
   -- Theme cycling (no OS notifications).
   { key = 't', mods = 'CTRL|ALT', action = cycle_theme },
+  { key = 'mapped:t', mods = 'CTRL|ALT', action = cycle_theme },
+  { key = 'T', mods = 'CTRL|ALT|SHIFT', action = cycle_theme },
+  { key = 'mapped:T', mods = 'CTRL|ALT|SHIFT', action = cycle_theme },
 
   -- Font cycling (no OS notifications).
   { key = 'f', mods = 'CTRL|ALT', action = cycle_font },
+  { key = 'mapped:f', mods = 'CTRL|ALT', action = cycle_font },
+  { key = 'F', mods = 'CTRL|ALT|SHIFT', action = cycle_font },
+  { key = 'mapped:F', mods = 'CTRL|ALT|SHIFT', action = cycle_font },
 
   -- Borderless toggle (removes the title bar; keeps resizable border).
-  {
-    key = 'b',
-    mods = 'CTRL|ALT',
-    action = wezterm.action_callback(function(window, pane)
-      local overrides = window:get_config_overrides() or {}
-      local current = overrides.window_decorations or pick_default_window_decorations()
-
-      if current == 'RESIZE' then
-        overrides.window_decorations = 'TITLE|RESIZE'
-      else
-        overrides.window_decorations = 'RESIZE'
-      end
-
-      window:set_config_overrides(overrides)
-
-      persisted.window_decorations = overrides.window_decorations
-      save_state(persisted)
-    end),
-  },
+  { key = 'b', mods = 'CTRL|ALT', action = toggle_borderless },
+  { key = 'mapped:b', mods = 'CTRL|ALT', action = toggle_borderless },
+  { key = 'B', mods = 'CTRL|ALT|SHIFT', action = toggle_borderless },
+  { key = 'mapped:B', mods = 'CTRL|ALT|SHIFT', action = toggle_borderless },
 
   -- Easier window move when borderless (titlebar hidden).
   { key = 'd', mods = 'CTRL|ALT', action = act.StartWindowDrag },
+  { key = 'mapped:d', mods = 'CTRL|ALT', action = act.StartWindowDrag },
+  { key = 'D', mods = 'CTRL|ALT|SHIFT', action = act.StartWindowDrag },
+  { key = 'mapped:D', mods = 'CTRL|ALT|SHIFT', action = act.StartWindowDrag },
 
   -- Always send Ctrl+C, even if there is a selection.
   -- Useful when an accidental selection would otherwise cause Ctrl+C to copy instead of interrupt.
   { key = 'c', mods = 'CTRL|ALT', action = act.SendKey { key = 'c', mods = 'CTRL' } },
+  { key = 'mapped:c', mods = 'CTRL|ALT', action = act.SendKey { key = 'c', mods = 'CTRL' } },
+  { key = 'C', mods = 'CTRL|ALT|SHIFT', action = act.SendKey { key = 'c', mods = 'CTRL' } },
+  { key = 'mapped:C', mods = 'CTRL|ALT|SHIFT', action = act.SendKey { key = 'c', mods = 'CTRL' } },
 }
 
 -- Clipboard paste keybindings:
@@ -507,10 +529,12 @@ local keys = {
 if is_windows then
   table.insert(keys, 2, { key = 'v', mods = 'CTRL', action = smart_paste })
   table.insert(keys, 3, { key = 'V', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
+  table.insert(keys, 4, { key = 'v', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
 else
   table.insert(keys, 2, { key = 'V', mods = 'CTRL|SHIFT', action = smart_paste })
+  table.insert(keys, 3, { key = 'v', mods = 'CTRL|SHIFT', action = smart_paste })
   -- A guaranteed plain paste that doesn't depend on shift-state.
-  table.insert(keys, 3, { key = 'v', mods = 'ALT', action = act.PasteFrom 'Clipboard' })
+  table.insert(keys, 4, { key = 'v', mods = 'ALT', action = act.PasteFrom 'Clipboard' })
 end
 
 local config = {
