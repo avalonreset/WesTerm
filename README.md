@@ -41,11 +41,11 @@ click-to-focus Windows notifications when your coding tool asks for input.
   - `Ctrl+Z` undo recent paste.
   - `Ctrl+Shift+Z` redo (best effort).
 - Fast visual tuning:
-  - `Ctrl+Alt+T` (or `Ctrl+Alt+Shift+T`) cycle color themes.
-  - `Ctrl+Alt+F` (or `Ctrl+Alt+Shift+F`) cycle fonts.
+  - `Ctrl+Alt+Shift+T` cycle color themes.
+  - `Ctrl+Alt+Shift+F` cycle fonts.
 - Borderless “black glass” mode:
-  - `Ctrl+Alt+B` (or `Ctrl+Alt+Shift+B`) toggle title bar.
-  - `Ctrl+Alt+D` (or `Ctrl+Alt+Shift+D`) drag window when borderless.
+  - `Ctrl+Alt+Shift+B` toggle title bar.
+  - `Ctrl+Alt+Shift+D` drag window when borderless.
 - Notification workflow boost:
   - Windows toast click now focuses the exact terminal pane/tab/window that raised it.
 - Resize stability tuning:
@@ -63,7 +63,7 @@ Full config docs: `extras/vibe/README.md`
 | Action | Hotkey |
 |---|---|
 | Smart copy / pass-through interrupt | `Ctrl+C` |
-| Force pass-through interrupt | `Ctrl+Alt+C` or `Ctrl+Alt+Shift+C` |
+| Force pass-through interrupt | `Ctrl+Alt+C` |
 | Smart paste (Windows) | `Ctrl+V` |
 | Plain paste (Windows) | `Ctrl+Shift+V` |
 | Smart paste (Linux/macOS) | `Ctrl+Shift+V` |
@@ -73,12 +73,11 @@ Full config docs: `extras/vibe/README.md`
 | Reload config | `Ctrl+Shift+R` |
 | Search | `Ctrl+F` |
 | Font size down/up/reset | `Ctrl+-` / `Ctrl+=` / `Ctrl+0` |
-| Cycle theme | `Ctrl+Alt+T` or `Ctrl+Alt+Shift+T` |
-| Cycle font | `Ctrl+Alt+F` or `Ctrl+Alt+Shift+F` |
-| Toggle borderless | `Ctrl+Alt+B` or `Ctrl+Alt+Shift+B` |
-| Start window drag | `Ctrl+Alt+D` or `Ctrl+Alt+Shift+D` |
-
-Letter hotkeys accept both Shift and non-Shift variants, so Caps Lock won't break them.
+| Cycle theme | `Ctrl+Alt+Shift+T` |
+| Cycle font | `Ctrl+Alt+Shift+F` |
+| Toggle borderless | `Ctrl+Alt+Shift+B` |
+| Start window drag | `Ctrl+Alt+Shift+D` |
+Theme/font/borderless/drag hotkeys are Shift-required.
 
 ## Install
 
