@@ -1,18 +1,23 @@
 # BenjaminTerm
 
-```text
-██████  ███████ ███    ██      ██  █████  ███    ███ ██ ███    ██ ████████ ███████ ██████  ███    ███
-██   ██ ██      ████   ██      ██ ██   ██ ████  ████ ██ ████   ██    ██    ██      ██   ██ ████  ████
-██████  █████   ██ ██  ██      ██ ███████ ██ ████ ██ ██ ██ ██  ██    ██    █████   ██████  ██ ████ ██
-██   ██ ██      ██  ██ ██ ██   ██ ██   ██ ██  ██  ██ ██ ██  ██ ██    ██    ██      ██   ██ ██  ██  ██
-██████  ███████ ██   ████  █████  ██   ██ ██      ██ ██ ██   ████    ██    ███████ ██   ██ ██      ██
-```
-
 Windows-first, hacker-styled terminal distro powered by WezTerm.
 
 BenjaminTerm keeps upstream WezTerm power, then adds quality-of-life workflows for fast coding sessions:
 smart copy/paste behavior, paste undo, font/theme cycling, borderless mode, persistent preferences, and now
 click-to-focus Windows notifications when your coding tool asks for input.
+
+<p align="center">
+  <img src="assets/icon/terminal.png" alt="BenjaminTerm BEN logo" width="220" />
+</p>
+
+```text
+██████╗ ███████╗███╗   ██╗     ████████╗███████╗██████╗ ███╗   ███╗
+██╔══██╗██╔════╝████╗  ██║     ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║
+██████╔╝█████╗  ██╔██╗ ██║        ██║   █████╗  ██████╔╝██╔████╔██║
+██╔══██╗██╔══╝  ██║╚██╗██║        ██║   ██╔══╝  ██╔══██╗██║╚██╔╝██║
+██████╔╝███████╗██║ ╚████║        ██║   ███████╗██║  ██║██║ ╚═╝ ██║
+╚═════╝ ╚══════╝╚═╝  ╚═══╝        ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝
+```
 
 ## Why BenjaminTerm
 
