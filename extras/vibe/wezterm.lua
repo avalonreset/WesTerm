@@ -25,6 +25,8 @@ local paste_undo_window_seconds = 30
 local paste_undo_max_chars = 200000
 local paste_undo_fallback_chars = 50000
 
+local click_open_extensions = 'html?|pdf|md|txt|json|csv|ya?ml'
+
 -- Theme/font: "hacker-ish", pure black background.
 -- Use a curated set of built-in schemes and provide a hotkey to cycle them.
 
@@ -82,6 +84,64 @@ local function save_state(st)
   end
   pcall(write_file_atomic, state_path, json)
 end
+
+local function decode_percent_escapes(s)
+  return (s:gsub('%%(%x%x)', function(hex)
+    return string.char(tonumber(hex, 16))
+  end))
+end
+
+local function resolve_clicked_path(uri_path, pane)
+  local path = decode_percent_escapes(uri_path or '')
+  path = path:gsub('^%s+', ''):gsub('%s+$', '')
+  path = path:gsub('^[<%(%[{]+', ''):gsub('[>%)%]}:,;]+$', '')
+  if path == '' then
+    return nil
+  end
+
+  if is_windows and path:match('^/[A-Za-z]:[\\/]') then
+    path = path:sub(2)
+  end
+
+  if path:match('^[A-Za-z]:[\\/]') or path:match('^\\\\') or path:match('^/') then
+    return path
+  end
+
+  -- Strip leading ./ when resolving relative artifacts.
+  if path:match('^%.[\\/]') then
+    path = path:sub(3)
+  end
+
+  local cwd = pane:get_current_working_dir()
+  if cwd and cwd.scheme == 'file' and type(cwd.file_path) == 'string' and cwd.file_path ~= '' then
+    local base = cwd.file_path
+    if is_windows and base:match('^/[A-Za-z]:[\\/]') then
+      base = base:sub(2)
+    end
+    local sep = base:find('\\', 1, true) and '\\' or '/'
+    if base:sub(-1) ~= '\\' and base:sub(-1) ~= '/' then
+      base = base .. sep
+    end
+    return base .. path
+  end
+
+  return path
+end
+
+wezterm.on('open-uri', function(window, pane, uri)
+  local raw_path = uri:match '^benpath:(.+)$'
+  if not raw_path then
+    return
+  end
+
+  local path = resolve_clicked_path(raw_path, pane)
+  if not path then
+    return false
+  end
+
+  wezterm.open_with(path)
+  return false
+end)
 
 local builtin_schemes = wezterm.color.get_builtin_schemes()
 -- Distro defaults (what a brand new install will start with).
@@ -584,6 +644,26 @@ local config = {
   default_cursor_style = 'BlinkingBlock',
 
   keys = keys,
+
+  hyperlink_rules = (function()
+    local rules = wezterm.default_hyperlink_rules()
+
+    -- Clickable Windows absolute paths like: E:/claude-seo/ or C:\logs\app.txt
+    table.insert(rules, {
+      regex = [[\b([A-Za-z]:(?:[\\/][^\\/\s<>"'`|:*?]+)+[\\/]?)]],
+      format = 'benpath:$1',
+      highlight = 1,
+    })
+
+    -- Clickable artifact filenames in output (resolved relative to pane cwd).
+    table.insert(rules, {
+      regex = [[(?<![/\\])\b([0-9A-Za-z][0-9A-Za-z._-]*\.(?i:]] .. click_open_extensions .. [[))\b(?![/\\])]],
+      format = 'benpath:$1',
+      highlight = 1,
+    })
+
+    return rules
+  end)(),
 }
 
 -- Rendering path:
