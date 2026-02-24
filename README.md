@@ -35,7 +35,11 @@ click-to-focus Windows notifications when your coding tool asks for input.
   - If text is selected, copy it and clear selection.
   - If not selected, pass through real `Ctrl+C` (interrupt behavior).
 - Smart paste:
-  - Windows: plain `Ctrl+V` clipboard paste (plus `Shift+Insert` compatibility).
+  - Windows: smart `Ctrl+V` clipboard paste:
+    - text pastes normally,
+    - image clipboard forwards to image-aware apps when text paste does not apply.
+  - Windows plain-paste fallback: `Ctrl+Shift+V`.
+  - `Shift+Insert` compatibility paste.
   - Linux/macOS: plain `Ctrl+Shift+V` clipboard paste.
 - Paste undo/redo:
   - `Ctrl+Z` undo recent paste.
@@ -69,8 +73,8 @@ Full config docs: `extras/vibe/README.md`
 |---|---|
 | Smart copy / pass-through interrupt | `Ctrl+C` |
 | Force pass-through interrupt | `Ctrl+Alt+C` |
-| Paste (Windows) | `Ctrl+V` |
-| Plain paste (Windows) | `Ctrl+Shift+V` |
+| Smart paste (Windows) | `Ctrl+V` |
+| Plain paste fallback (Windows) | `Ctrl+Shift+V` |
 | Paste (Windows compatibility) | `Shift+Insert` |
 | Paste (Linux/macOS) | `Ctrl+Shift+V` |
 | Plain paste (Linux/macOS) | `Alt+V` |

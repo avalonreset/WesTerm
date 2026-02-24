@@ -8,9 +8,12 @@ Windows-first BenjaminTerm release focused on workflow stability and visual qual
 
 ### Highlights
 - Clipboard reliability improvements:
-  - Windows paste uses plain `Ctrl+V` clipboard behavior.
-  - Added `Shift+Insert` compatibility paste binding.
-  - Reduced interference with clipboard-temporary helpers/transcription workflows.
+  - Windows `Ctrl+V` uses smart paste:
+    - text pastes immediately,
+    - image clipboard content forwards to image-aware coding tools if text paste doesn't apply.
+  - `Ctrl+Shift+V` remains guaranteed plain clipboard paste fallback.
+  - `Shift+Insert` compatibility paste binding retained.
+  - Restored compatibility with OpenWhispr transcription and Win+Shift+S screenshot-to-prompt workflows.
 - Curated theme system overhaul:
   - Shuffle-bag rotation (no repeat until bag exhaustion).
   - Pure-black background filtering.
