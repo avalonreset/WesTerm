@@ -176,7 +176,7 @@ async fn run_cli_async(opts: &crate::Opt, cli: CliCommand) -> anyhow::Result<()>
         cli.prefer_mux,
         cli.class
             .as_deref()
-            .unwrap_or(wezterm_gui_subcommands::DEFAULT_WINDOW_CLASS),
+            .unwrap_or(wezterm_gui_subcommands::default_window_class()),
     )?;
 
     match cli.sub {

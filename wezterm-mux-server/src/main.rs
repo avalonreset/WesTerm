@@ -194,12 +194,12 @@ fn run() -> anyhow::Result<()> {
         "OLDPWD",
         "PWD",
         "SHLVL",
-        "WEZTERM_PANE",
-        "WEZTERM_UNIX_SOCKET",
         "_",
     ] {
         std::env::remove_var(name);
     }
+    config::remove_app_env_var("PANE");
+    config::remove_app_env_var("UNIX_SOCKET");
     for name in &config::configuration().mux_env_remove {
         std::env::remove_var(name);
     }
@@ -310,7 +310,7 @@ mod ossl;
 pub fn spawn_listener() -> anyhow::Result<()> {
     let config = configuration();
     for unix_dom in &config.unix_domains {
-        std::env::set_var("WEZTERM_UNIX_SOCKET", unix_dom.socket_path());
+        config::set_app_env_var("UNIX_SOCKET", unix_dom.socket_path());
         let mut listener = wezterm_mux_server_impl::local::LocalListener::with_domain(unix_dom)?;
         thread::spawn(move || {
             listener.run();

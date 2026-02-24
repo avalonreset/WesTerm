@@ -1223,7 +1223,7 @@ impl Client {
         prefer_mux: bool,
         class_name: &str,
     ) -> anyhow::Result<config::UnixDomain> {
-        match std::env::var_os("WEZTERM_UNIX_SOCKET") {
+        match config::app_env_var_os("UNIX_SOCKET") {
             Some(path) if !path.is_empty() => Ok(config::UnixDomain {
                 socket_path: Some(path.into()),
                 ..Default::default()
@@ -1245,8 +1245,9 @@ impl Client {
                     .first()
                     .ok_or_else(|| {
                         anyhow!(
-                            "no default unix domain is configured and WEZTERM_UNIX_SOCKET \
-                             is not set in the environment"
+                            "no default unix domain is configured and {} \
+                             is not set in the environment",
+                            config::app_env_var_name("UNIX_SOCKET")
                         )
                     })?
                     .clone())
@@ -1315,7 +1316,7 @@ impl Client {
         let pane_id: PaneId = match pane_id {
             Some(p) => p,
             None => {
-                if let Ok(pane) = std::env::var("WEZTERM_PANE") {
+                if let Ok(pane) = config::app_env_var("PANE") {
                     pane.parse()?
                 } else {
                     let mut clients = self.list_clients().await?.clients;
@@ -1323,9 +1324,10 @@ impl Client {
                     clients.sort_by(|a, b| b.last_input.cmp(&a.last_input));
                     if clients.is_empty() {
                         anyhow::bail!(
-                            "--pane-id was not specified and $WEZTERM_PANE
+                            "--pane-id was not specified and ${}
                          is not set in the environment, and I couldn't
-                         determine which pane was currently focused"
+                         determine which pane was currently focused",
+                            config::app_env_var_name("PANE")
                         );
                     }
 

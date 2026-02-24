@@ -8,7 +8,7 @@ use smol::channel::{Receiver, Sender};
 use smol::prelude::*;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::DirBuilder;
 #[cfg(unix)]
 use std::os::unix::fs::DirBuilderExt;
@@ -67,6 +67,11 @@ type ErrorCallback = fn(&str);
 
 lazy_static! {
     pub static ref HOME_DIR: PathBuf = dirs_next::home_dir().expect("can't find HOME dir");
+    static ref IS_BENJAMINTERM_EXECUTABLE: bool = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_name().and_then(|n| n.to_str()).map(|s| s.to_ascii_lowercase()))
+        .map(|name| name.starts_with("benjaminterm"))
+        .unwrap_or(false);
     pub static ref CONFIG_DIRS: Vec<PathBuf> = config_dirs();
     pub static ref RUNTIME_DIR: PathBuf = compute_runtime_dir().unwrap();
     pub static ref DATA_DIR: PathBuf = compute_data_dir().unwrap();
@@ -382,10 +387,76 @@ pub fn create_user_owned_dirs(p: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
+pub fn is_benjaminterm_executable() -> bool {
+    *IS_BENJAMINTERM_EXECUTABLE
+}
+
+pub fn app_basename() -> &'static str {
+    if is_benjaminterm_executable() {
+        "benjaminterm"
+    } else {
+        "wezterm"
+    }
+}
+
+pub fn app_env_prefix() -> &'static str {
+    if is_benjaminterm_executable() {
+        "BENJAMINTERM"
+    } else {
+        "WEZTERM"
+    }
+}
+
+pub fn app_env_var_name(suffix: &str) -> String {
+    format!("{}_{}", app_env_prefix(), suffix)
+}
+
+pub fn app_env_var_os(suffix: &str) -> Option<OsString> {
+    let primary = std::env::var_os(app_env_var_name(suffix));
+    if primary.is_some() || !is_benjaminterm_executable() {
+        return primary;
+    }
+
+    std::env::var_os(format!("WEZTERM_{suffix}"))
+}
+
+pub fn app_env_var(suffix: &str) -> Result<String, std::env::VarError> {
+    let primary = std::env::var(app_env_var_name(suffix));
+    match primary {
+        Ok(value) => Ok(value),
+        Err(std::env::VarError::NotPresent) if is_benjaminterm_executable() => {
+            std::env::var(format!("WEZTERM_{suffix}"))
+        }
+        Err(err) => Err(err),
+    }
+}
+
+pub fn set_app_env_var<S: AsRef<OsStr>>(suffix: &str, value: S) {
+    std::env::set_var(app_env_var_name(suffix), value);
+}
+
+pub fn remove_app_env_var(suffix: &str) {
+    std::env::remove_var(app_env_var_name(suffix));
+
+    // In BenjaminTerm mode, also clear legacy names to avoid inheriting stale
+    // values from a WezTerm session.
+    if is_benjaminterm_executable() {
+        std::env::remove_var(format!("WEZTERM_{suffix}"));
+    }
+}
+
+pub fn default_window_class() -> &'static str {
+    if is_benjaminterm_executable() {
+        "org.benjaminterm.benjaminterm"
+    } else {
+        "org.wezfurlong.wezterm"
+    }
+}
+
 fn xdg_config_home() -> PathBuf {
-    match std::env::var_os("XDG_CONFIG_HOME").map(|s| PathBuf::from(s).join("wezterm")) {
+    match std::env::var_os("XDG_CONFIG_HOME").map(|s| PathBuf::from(s).join(app_basename())) {
         Some(p) => p,
-        None => HOME_DIR.join(".config").join("wezterm"),
+        None => HOME_DIR.join(".config").join(app_basename()),
     }
 }
 
@@ -395,7 +466,7 @@ fn config_dirs() -> Vec<PathBuf> {
 
     #[cfg(unix)]
     if let Some(d) = std::env::var_os("XDG_CONFIG_DIRS") {
-        dirs.extend(std::env::split_paths(&d).map(|s| PathBuf::from(s).join("wezterm")));
+        dirs.extend(std::env::split_paths(&d).map(|s| PathBuf::from(s).join(app_basename())));
     }
 
     dirs

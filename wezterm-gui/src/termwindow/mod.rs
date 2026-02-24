@@ -89,7 +89,7 @@ use prevcursor::PrevCursorPos;
 const ATLAS_SIZE: usize = 128;
 
 lazy_static::lazy_static! {
-    static ref WINDOW_CLASS: Mutex<String> = Mutex::new(wezterm_gui_subcommands::DEFAULT_WINDOW_CLASS.to_owned());
+    static ref WINDOW_CLASS: Mutex<String> = Mutex::new(wezterm_gui_subcommands::default_window_class().to_owned());
     static ref POSITION: Mutex<Option<GuiPosition>> = Mutex::new(None);
 }
 

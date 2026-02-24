@@ -133,7 +133,11 @@ impl UnixDomain {
                         "wezterm-mux-server.exe"
                     }
                 } else {
-                    "wezterm-mux-server"
+                    if crate::is_benjaminterm_executable() {
+                        "benjaminterm-mux-server"
+                    } else {
+                        "wezterm-mux-server"
+                    }
                 };
 
                 Ok(vec![

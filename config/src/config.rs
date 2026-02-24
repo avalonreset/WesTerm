@@ -21,6 +21,7 @@ use crate::units::Dimension;
 use crate::unix::UnixDomain;
 use crate::wsl::WslDomain;
 use crate::{
+    app_basename, app_env_var_os, remove_app_env_var, set_app_env_var,
     default_config_with_overrides_applied, default_one_point_oh, default_one_point_oh_f64,
     default_true, default_win32_acrylic_accent_color, CellWidth, GpuInfo,
     IntegratedTitleButtonColor, KeyMapPreference, LoadedConfig, MouseEventTriggerMods, RgbaColor,
@@ -1006,42 +1007,23 @@ impl Config {
         // multiple.  In addition, it spawns a lot of subprocesses,
         // so we do this bit "by-hand"
         let exe_name = std::env::current_exe().ok();
-        let exe_file_name = exe_name
-            .as_ref()
-            .and_then(|p| p.file_name())
-            .and_then(|n| n.to_str())
-            .map(|s| s.to_ascii_lowercase());
-        let is_benjaminterm = exe_file_name
-            .as_deref()
-            .map(|name| name.starts_with("benjaminterm"))
-            .unwrap_or(false);
+        let app_name = app_basename();
+        let config_file_name = format!("{app_name}.lua");
+        let home_config_name = format!(".{app_name}.lua");
 
         let mut paths = vec![];
 
-        if is_benjaminterm {
-            // Keep BenjaminTerm independent from a vanilla WezTerm install by
-            // preferring BenjaminTerm-specific config names/paths.
-            paths.push(PathPossibility::optional(HOME_DIR.join(".benjaminterm.lua")));
-            for dir in CONFIG_DIRS.iter() {
-                paths.push(PathPossibility::optional(dir.join("benjaminterm.lua")));
-            }
-            if let Some(exe_dir) = exe_name.as_ref().and_then(|p| p.parent()) {
-                paths.push(PathPossibility::optional(exe_dir.join("benjaminterm.lua")));
-            }
-        }
-
-        // Legacy/default WezTerm config locations remain as fallback.
-        paths.push(PathPossibility::optional(HOME_DIR.join(".wezterm.lua")));
+        paths.push(PathPossibility::optional(HOME_DIR.join(home_config_name)));
         for dir in CONFIG_DIRS.iter() {
-            paths.push(PathPossibility::optional(dir.join("wezterm.lua")));
+            paths.push(PathPossibility::optional(dir.join(&config_file_name)));
         }
 
         // Allow a config file that lives next to the executable.
         if let Some(exe_dir) = exe_name.as_ref().and_then(|p| p.parent()) {
-            paths.push(PathPossibility::optional(exe_dir.join("wezterm.lua")));
+            paths.push(PathPossibility::optional(exe_dir.join(config_file_name)));
         }
-        if let Some(path) = std::env::var_os("WEZTERM_CONFIG_FILE") {
-            log::trace!("Note: WEZTERM_CONFIG_FILE is set in the environment");
+        if let Some(path) = app_env_var_os("CONFIG_FILE") {
+            log::trace!("Note: {} is set in the environment", crate::app_env_var_name("CONFIG_FILE"));
             paths.insert(0, PathPossibility::required(path.into()));
         }
 
@@ -1069,11 +1051,10 @@ impl Config {
             }
         }
 
-        // We didn't find (or were asked to skip) a wezterm.lua file, so
-        // update the environment to make it simpler to understand this
-        // state.
-        std::env::remove_var("WEZTERM_CONFIG_FILE");
-        std::env::remove_var("WEZTERM_CONFIG_DIR");
+        // We didn't find (or were asked to skip) a config file, so update the
+        // environment to make it simpler to understand this state.
+        remove_app_env_var("CONFIG_FILE");
+        remove_app_env_var("CONFIG_DIR");
 
         match Self::try_default() {
             Err(err) => LoadedConfig {
@@ -1144,9 +1125,9 @@ impl Config {
                 // problems earlier than we use them.
                 let _ = cfg.key_bindings();
 
-                std::env::set_var("WEZTERM_CONFIG_FILE", p);
+                set_app_env_var("CONFIG_FILE", p);
                 if let Some(dir) = p.parent() {
-                    std::env::set_var("WEZTERM_CONFIG_DIR", dir);
+                    set_app_env_var("CONFIG_DIR", dir);
                 }
                 Ok(cfg)
             });
@@ -1753,26 +1734,26 @@ fn default_font_size() -> f64 {
 
 pub(crate) fn compute_cache_dir() -> anyhow::Result<PathBuf> {
     if let Some(runtime) = dirs_next::cache_dir() {
-        return Ok(runtime.join("wezterm"));
+        return Ok(runtime.join(app_basename()));
     }
 
-    Ok(crate::HOME_DIR.join(".local/share/wezterm"))
+    Ok(crate::HOME_DIR.join(format!(".local/share/{}", app_basename())))
 }
 
 pub(crate) fn compute_data_dir() -> anyhow::Result<PathBuf> {
     if let Some(runtime) = dirs_next::data_dir() {
-        return Ok(runtime.join("wezterm"));
+        return Ok(runtime.join(app_basename()));
     }
 
-    Ok(crate::HOME_DIR.join(".local/share/wezterm"))
+    Ok(crate::HOME_DIR.join(format!(".local/share/{}", app_basename())))
 }
 
 pub(crate) fn compute_runtime_dir() -> anyhow::Result<PathBuf> {
     if let Some(runtime) = dirs_next::runtime_dir() {
-        return Ok(runtime.join("wezterm"));
+        return Ok(runtime.join(app_basename()));
     }
 
-    Ok(crate::HOME_DIR.join(".local/share/wezterm"))
+    Ok(crate::HOME_DIR.join(format!(".local/share/{}", app_basename())))
 }
 
 pub fn pki_dir() -> anyhow::Result<PathBuf> {

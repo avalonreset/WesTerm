@@ -4,6 +4,20 @@ local act = wezterm.action
 local target = wezterm.target_triple or ''
 local is_windows = target:find('windows', 1, true) ~= nil
 
+local function env_is_truthy(name)
+  local value = os.getenv(name)
+  if type(value) ~= 'string' then
+    return false
+  end
+  local v = value:lower()
+  return v == '1' or v == 'true' or v == 'yes' or v == 'on'
+end
+
+local force_alt_v_image_paste = env_is_truthy 'BENJAMINTERM_FORCE_ALT_V_IMAGE_PASTE'
+local claude_image_path_backstop = env_is_truthy 'BENJAMINTERM_CLAUDE_IMAGE_PATH_BACKSTOP'
+local use_at_prefix_for_image_paths = env_is_truthy 'BENJAMINTERM_USE_AT_IMAGE_PATH'
+local paste_clipboard_image_path_into_prompt
+
 local function normalize_front_end_name(value)
   if type(value) ~= 'string' or value == '' then
     return nil
@@ -292,12 +306,23 @@ local function clipboard_has_image()
   if is_windows then
     local ok, stdout, _ = wezterm.run_child_process {
       'powershell.exe',
+      '-STA',
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      -- `Get-Clipboard -Format Image` may return $null without throwing when there is
-      -- no image. Emit an explicit sentinel so we can reliably detect it.
-      "try { $img = Get-Clipboard -Format Image -ErrorAction Stop } catch { $img = $null }; if ($null -ne $img) { 'HAS_IMAGE' }",
+      -- Try both PowerShell clipboard APIs because different screenshot tools and
+      -- Windows versions expose different image formats.
+      table.concat({
+        "$has = $false",
+        "try { $img = Get-Clipboard -Format Image -ErrorAction Stop; if ($null -ne $img) { $has = $true } } catch {}",
+        "if (-not $has) {",
+        "  try {",
+        "    Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop | Out-Null",
+        "    $has = [System.Windows.Forms.Clipboard]::ContainsImage()",
+        "  } catch {}",
+        "}",
+        "if ($has) { 'HAS_IMAGE' }",
+      }, '; '),
     }
     return ok and stdout and stdout:find('HAS_IMAGE', 1, true) ~= nil
   end
@@ -305,6 +330,200 @@ local function clipboard_has_image()
   -- We intentionally do NOT try to forward Ctrl+V on Linux/macOS: Ctrl+V can be a
   -- meaningful keybinding inside shells and TUI apps (eg: readline "quoted insert").
   return false
+end
+
+local function looks_like_claude_value(value)
+  if type(value) ~= 'string' or value == '' then
+    return false
+  end
+
+  local v = value:lower()
+  if v == 'claude' or v == 'claude.exe' or v == 'claude.cmd' or v == 'claude.ps1' then
+    return true
+  end
+
+  local hints = {
+    'claude-code',
+    '@anthropic-ai\\claude-code',
+    '@anthropic-ai/claude-code',
+    '\\claude.exe',
+    '/claude.exe',
+    '\\claude.cmd',
+    '/claude.cmd',
+    '\\claude.ps1',
+    '/claude.ps1',
+  }
+  for _, hint in ipairs(hints) do
+    if v:find(hint, 1, true) ~= nil then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function process_info_looks_like_claude(info)
+  if type(info) ~= 'table' then
+    return false
+  end
+
+  if looks_like_claude_value(info.name) or looks_like_claude_value(info.executable) then
+    return true
+  end
+
+  if type(info.argv) == 'table' then
+    for _, arg in ipairs(info.argv) do
+      if looks_like_claude_value(arg) then
+        return true
+      end
+    end
+  end
+
+  if type(info.children) == 'table' then
+    for _, child in pairs(info.children) do
+      if process_info_looks_like_claude(child) then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+local function is_claude_foreground(pane)
+  local info = pane:get_foreground_process_info()
+  if process_info_looks_like_claude(info) then
+    return true
+  end
+
+  if looks_like_claude_value(pane:get_foreground_process_name()) then
+    return true
+  end
+
+  local ok, title = pcall(function()
+    return pane:get_title()
+  end)
+  if ok and looks_like_claude_value(title) then
+    return true
+  end
+
+  return false
+end
+
+local function send_image_paste_key(window, pane)
+  local is_claude = is_claude_foreground(pane)
+
+  -- Deterministic path for Claude: materialize clipboard image to a temp file
+  -- and paste it as an @mention. This avoids fragile terminal clipboard MIME
+  -- interactions in some Windows/WSL/terminal combinations.
+  if is_claude and (not force_alt_v_image_paste) and paste_clipboard_image_path_into_prompt then
+    if paste_clipboard_image_path_into_prompt(window, pane) then
+      return
+    end
+  end
+
+  -- Fallback key chords:
+  -- Claude Code on Windows expects Alt+V for clipboard-image paste.
+  -- Other image-aware TUIs typically use Ctrl+V.
+  if force_alt_v_image_paste or is_claude then
+    window:perform_action(act.SendKey { key = 'v', mods = 'ALT' }, pane)
+  else
+    window:perform_action(act.SendKey { key = 'v', mods = 'CTRL' }, pane)
+  end
+end
+
+local function clipboard_image_to_temp_png_path()
+  if not is_windows then
+    return nil
+  end
+
+  local ok, stdout, _ = wezterm.run_child_process {
+    'powershell.exe',
+    '-STA',
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    table.concat({
+      "$ErrorActionPreference = 'Stop'",
+      "$dir = Join-Path $env:LOCALAPPDATA 'BenjaminTerm\\clipboard'",
+      "New-Item -ItemType Directory -Path $dir -Force | Out-Null",
+      "$path = Join-Path $dir ('clip-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8) + '.png')",
+      "$img = $null",
+      "try { $img = Get-Clipboard -Format Image -ErrorAction Stop } catch {}",
+      "if ($null -eq $img) {",
+      "  Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop | Out-Null",
+      "  if ([System.Windows.Forms.Clipboard]::ContainsImage()) {",
+      "    $img = [System.Windows.Forms.Clipboard]::GetImage()",
+      "  }",
+      "}",
+      "if ($null -eq $img) { exit 1 }",
+      "Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue | Out-Null",
+      "$img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)",
+      "[Console]::Out.Write($path)",
+    }, '; '),
+  }
+
+  if not ok or type(stdout) ~= 'string' then
+    return nil
+  end
+
+  local path = stdout:gsub('[\r\n]+$', '')
+  if path == '' then
+    return nil
+  end
+  return path
+end
+
+local function windows_path_to_wsl_path(path)
+  if type(path) ~= 'string' then
+    return nil
+  end
+
+  local drive, rest = path:match '^([A-Za-z]):[\\/](.*)$'
+  if not drive then
+    return nil
+  end
+
+  rest = rest:gsub('\\', '/')
+  return '/mnt/' .. drive:lower() .. '/' .. rest
+end
+
+local function windows_path_to_forward_slash(path)
+  if type(path) ~= 'string' then
+    return nil
+  end
+  return path:gsub('\\', '/')
+end
+
+paste_clipboard_image_path_into_prompt = function(_window, pane)
+  local path = clipboard_image_to_temp_png_path()
+  if not path then
+    return false
+  end
+
+  if is_claude_foreground(pane) then
+    local candidates = {}
+    local win_path = windows_path_to_forward_slash(path) or path
+    table.insert(candidates, win_path)
+    local wsl_path = windows_path_to_wsl_path(path)
+    if wsl_path then
+      table.insert(candidates, wsl_path)
+    end
+
+    if use_at_prefix_for_image_paths then
+      for i = 1, #candidates do
+        candidates[i] = '@' .. candidates[i]
+      end
+    end
+
+    -- Use plain visible paths by default because some Claude terminal builds
+    -- appear to render @mentions as empty chips when the path isn't accepted.
+    pane:send_paste(table.concat(candidates, ' '))
+    return true
+  end
+
+  pane:send_paste(path)
+  return true
 end
 
 local function get_clipboard_text()
@@ -384,6 +603,17 @@ local function send_back_delete(pane, count)
 end
 
 local smart_paste = wezterm.action_callback(function(window, pane)
+  -- Fast-path for Windows image clipboard content.
+  -- This avoids text-paste heuristics from swallowing the key chord required by
+  -- image-aware TUIs, and makes screenshot paste behavior deterministic.
+  if is_windows and clipboard_has_image() then
+    send_image_paste_key(window, pane)
+    if claude_image_path_backstop and is_claude_foreground(pane) then
+      paste_clipboard_image_path_into_prompt(window, pane)
+    end
+    return
+  end
+
   local before = pane:get_logical_lines_as_text(3) or ''
 
   -- Paste text first and *then* check for image.
@@ -397,12 +627,12 @@ local smart_paste = wezterm.action_callback(function(window, pane)
   local after = pane:get_logical_lines_as_text(3) or ''
   local changed = before ~= after
 
-  -- If the clipboard holds an image, forward Ctrl+V into the program so that
-  -- image-aware TUIs (like Codex) can handle it.
+  -- If the clipboard holds an image, forward the app-specific paste chord.
+  -- Claude Code on Windows uses Alt+V; Codex/Gemini-style TUIs generally use Ctrl+V.
   -- Only do this if the paste didn't visibly change the viewport; otherwise
-  -- we'd risk forwarding Ctrl+V after successfully pasting text.
+  -- we'd risk forwarding a second paste chord after successfully pasting text.
   if is_windows and (not changed) and clipboard_has_image() then
-    window:perform_action(act.SendKey { key = 'v', mods = 'CTRL' }, pane)
+    send_image_paste_key(window, pane)
     return
   end
 
@@ -463,6 +693,10 @@ local redo_paste = wezterm.action_callback(function(window, pane)
   table.remove(st.redo)
   table.insert(st.undo, entry)
   st.last_paste_s = now_epoch_seconds()
+end)
+
+local paste_image_path = wezterm.action_callback(function(window, pane)
+  paste_clipboard_image_path_into_prompt(window, pane)
 end)
 
 local cycle_theme = wezterm.action_callback(function(window, pane)
@@ -598,6 +832,12 @@ local keys = {
   { key = 'mapped:c', mods = 'CTRL|ALT', action = act.SendKey { key = 'c', mods = 'CTRL' } },
   { key = 'C', mods = 'CTRL|ALT|SHIFT', action = act.SendKey { key = 'c', mods = 'CTRL' } },
   { key = 'mapped:C', mods = 'CTRL|ALT|SHIFT', action = act.SendKey { key = 'c', mods = 'CTRL' } },
+
+  -- Emergency fallback: capture clipboard image to a temp PNG and paste its path.
+  { key = 'v', mods = 'CTRL|ALT', action = paste_image_path },
+  { key = 'mapped:v', mods = 'CTRL|ALT', action = paste_image_path },
+  { key = 'V', mods = 'CTRL|ALT|SHIFT', action = paste_image_path },
+  { key = 'mapped:V', mods = 'CTRL|ALT|SHIFT', action = paste_image_path },
 }
 
 -- Clipboard paste keybindings:
