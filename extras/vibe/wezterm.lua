@@ -164,49 +164,385 @@ local builtin_schemes = wezterm.color.get_builtin_schemes()
 local DEFAULT_COLOR_SCHEME = 'Blue Matrix'
 local DEFAULT_FONT_PRIMARY = 'OCR A Extended'
 
-local hacker_scheme_candidates = {
-  -- Strong "hacker terminal" vibes
-  'hardhacker',
-  'Matrix (terminal.sexy)',
-  'Blue Matrix',
-  'Cyberdyne',
-  'Cobalt Neon',
+local function is_pure_black_background(value)
+  if type(value) ~= 'string' then
+    return false
+  end
 
-  -- Popular dark dev themes
-  'Dracula (Official)',
-  'Gruvbox Dark (Gogh)',
-  'Nord (Gogh)',
-  'Night Owl (Gogh)',
-}
+  local v = value:lower()
+  if v == '#000' or v == '#000000' or v == '#000000ff' then
+    return true
+  end
+  if v == 'rgb:0000/0000/0000' then
+    return true
+  end
+  return false
+end
 
-local hacker_schemes = {}
-for _, name in ipairs(hacker_scheme_candidates) do
-  if builtin_schemes[name] then
-    table.insert(hacker_schemes, name)
+local function scheme_visual_signature(value)
+  local t = type(value)
+  if t == 'string' then
+    return '"' .. value:lower() .. '"'
+  end
+  if t == 'number' or t == 'boolean' then
+    return tostring(value)
+  end
+  if t ~= 'table' then
+    return ''
+  end
+
+  local keys = {}
+  for k, _ in pairs(value) do
+    if
+      k ~= 'name'
+      and k ~= 'author'
+      and k ~= 'aliases'
+      and k ~= 'origin_url'
+      and k ~= 'wezterm_version'
+      and k ~= 'metadata'
+    then
+      table.insert(keys, k)
+    end
+  end
+  table.sort(keys, function(a, b)
+    return tostring(a) < tostring(b)
+  end)
+
+  local out = { '{' }
+  for _, k in ipairs(keys) do
+    table.insert(out, tostring(k))
+    table.insert(out, '=')
+    table.insert(out, scheme_visual_signature(value[k]))
+    table.insert(out, ';')
+  end
+  table.insert(out, '}')
+  return table.concat(out)
+end
+
+local similar_scheme_max_distance = 0.07
+local min_scheme_avg_saturation = 0.20
+local min_scheme_unique_colors = 10
+
+local function parse_hex_component_to_unit(s)
+  if type(s) ~= 'string' or s == '' then
+    return nil
+  end
+  local n = tonumber(s, 16)
+  if not n then
+    return nil
+  end
+  local max = (16 ^ #s) - 1
+  if max <= 0 then
+    return nil
+  end
+  return n / max
+end
+
+local function color_to_rgb_unit(value)
+  if type(value) ~= 'string' then
+    return nil
+  end
+
+  local v = value:lower()
+  local hex = v:match '^#([0-9a-f]+)$'
+  if hex then
+    if #hex == 3 or #hex == 4 then
+      local r = parse_hex_component_to_unit(hex:sub(1, 1) .. hex:sub(1, 1))
+      local g = parse_hex_component_to_unit(hex:sub(2, 2) .. hex:sub(2, 2))
+      local b = parse_hex_component_to_unit(hex:sub(3, 3) .. hex:sub(3, 3))
+      if r and g and b then
+        return { r, g, b }
+      end
+    elseif #hex == 6 or #hex == 8 then
+      local r = parse_hex_component_to_unit(hex:sub(1, 2))
+      local g = parse_hex_component_to_unit(hex:sub(3, 4))
+      local b = parse_hex_component_to_unit(hex:sub(5, 6))
+      if r and g and b then
+        return { r, g, b }
+      end
+    end
+  end
+
+  local rhex, ghex, bhex = v:match '^rgb:([0-9a-f]+)/([0-9a-f]+)/([0-9a-f]+)$'
+  if rhex and ghex and bhex then
+    local r = parse_hex_component_to_unit(rhex)
+    local g = parse_hex_component_to_unit(ghex)
+    local b = parse_hex_component_to_unit(bhex)
+    if r and g and b then
+      return { r, g, b }
+    end
+  end
+
+  return nil
+end
+
+local function append_color_sample(samples, value)
+  local rgb = color_to_rgb_unit(value)
+  if rgb then
+    table.insert(samples, rgb)
   end
 end
+
+local function build_scheme_color_samples(scheme)
+  local samples = {}
+  if type(scheme) ~= 'table' then
+    return samples
+  end
+
+  if type(scheme.ansi) == 'table' then
+    for i = 1, 8 do
+      append_color_sample(samples, scheme.ansi[i])
+    end
+  end
+  if type(scheme.brights) == 'table' then
+    for i = 1, 8 do
+      append_color_sample(samples, scheme.brights[i])
+    end
+  end
+
+  append_color_sample(samples, scheme.foreground)
+  append_color_sample(samples, scheme.cursor_bg)
+  append_color_sample(samples, scheme.cursor_border)
+  append_color_sample(samples, scheme.cursor_fg)
+  append_color_sample(samples, scheme.selection_bg)
+  append_color_sample(samples, scheme.selection_fg)
+
+  return samples
+end
+
+local function compute_samples_brightness(samples)
+  if type(samples) ~= 'table' or #samples == 0 then
+    return 0
+  end
+
+  local total = 0
+  for _, rgb in ipairs(samples) do
+    total = total + (0.2126 * rgb[1]) + (0.7152 * rgb[2]) + (0.0722 * rgb[3])
+  end
+  return total / #samples
+end
+
+local function compute_rgb_saturation(rgb)
+  local max_c = math.max(rgb[1], math.max(rgb[2], rgb[3]))
+  local min_c = math.min(rgb[1], math.min(rgb[2], rgb[3]))
+  if max_c <= 0 then
+    return 0
+  end
+  return (max_c - min_c) / max_c
+end
+
+local function compute_samples_avg_saturation(samples)
+  if type(samples) ~= 'table' or #samples == 0 then
+    return 0
+  end
+
+  local total = 0
+  for _, rgb in ipairs(samples) do
+    total = total + compute_rgb_saturation(rgb)
+  end
+  return total / #samples
+end
+
+local function compute_samples_unique_count(samples)
+  if type(samples) ~= 'table' or #samples == 0 then
+    return 0
+  end
+
+  local seen = {}
+  for _, rgb in ipairs(samples) do
+    local key = string.format('%.3f-%.3f-%.3f', rgb[1], rgb[2], rgb[3])
+    seen[key] = true
+  end
+
+  local n = 0
+  for _ in pairs(seen) do
+    n = n + 1
+  end
+  return n
+end
+
+local function compute_scheme_distance(samples_a, samples_b)
+  local n = math.min(#samples_a, #samples_b)
+  if n <= 0 then
+    return 1
+  end
+
+  local total = 0
+  for i = 1, n do
+    local a = samples_a[i]
+    local b = samples_b[i]
+    total = total + math.abs(a[1] - b[1]) + math.abs(a[2] - b[2]) + math.abs(a[3] - b[3])
+  end
+  return total / (3 * n)
+end
+
+local prefiltered_hacker_schemes = {}
+local seen_scheme_signatures = {}
+for name, scheme in pairs(builtin_schemes) do
+  if type(scheme) == 'table' and is_pure_black_background(scheme.background) then
+    local sig = scheme_visual_signature(scheme)
+    if not seen_scheme_signatures[sig] then
+      seen_scheme_signatures[sig] = name
+      table.insert(prefiltered_hacker_schemes, name)
+    end
+  end
+end
+
+local ranked_hacker_candidates = {}
+for _, name in ipairs(prefiltered_hacker_schemes) do
+  local scheme = builtin_schemes[name]
+  local samples = build_scheme_color_samples(scheme)
+  table.insert(ranked_hacker_candidates, {
+    name = name,
+    samples = samples,
+    brightness = compute_samples_brightness(samples),
+    avg_saturation = compute_samples_avg_saturation(samples),
+    unique_count = compute_samples_unique_count(samples),
+  })
+end
+table.sort(ranked_hacker_candidates, function(a, b)
+  if a.brightness ~= b.brightness then
+    return a.brightness > b.brightness
+  end
+  return a.name:lower() < b.name:lower()
+end)
+
+local selected_hacker_candidates = {}
+for _, candidate in ipairs(ranked_hacker_candidates) do
+  local too_similar = false
+  for _, kept in ipairs(selected_hacker_candidates) do
+    if compute_scheme_distance(candidate.samples, kept.samples) <= similar_scheme_max_distance then
+      too_similar = true
+      break
+    end
+  end
+  if not too_similar then
+    table.insert(selected_hacker_candidates, candidate)
+  end
+end
+
+local hacker_schemes = {}
+for _, candidate in ipairs(selected_hacker_candidates) do
+  if candidate.avg_saturation >= min_scheme_avg_saturation and candidate.unique_count >= min_scheme_unique_colors then
+    table.insert(hacker_schemes, candidate.name)
+  end
+end
+table.sort(hacker_schemes, function(a, b)
+  return a:lower() < b:lower()
+end)
 if #hacker_schemes == 0 then
   hacker_schemes = { 'Builtin Dark' }
+end
+local hacker_scheme_set = {}
+for _, name in ipairs(hacker_schemes) do
+  hacker_scheme_set[name] = true
 end
 
 local persisted = load_state()
 
 local function pick_default_scheme()
   local name = persisted and persisted.color_scheme
-  if type(name) == 'string' and builtin_schemes[name] then
+  if type(name) == 'string' and hacker_scheme_set[name] then
     return name
   end
-  if builtin_schemes[DEFAULT_COLOR_SCHEME] then
+  if hacker_scheme_set[DEFAULT_COLOR_SCHEME] then
     return DEFAULT_COLOR_SCHEME
   end
   return hacker_schemes[1]
 end
 
-local function pick_random_scheme(seed_hint)
+local rng_seeded = false
+local function seed_rng_once(seed_hint)
+  if rng_seeded then
+    return
+  end
   local now_s = tonumber(wezterm.time.now():format '%s') or 0
-  local seed = now_s + ((seed_hint or 0) * 7919)
-  local idx = (seed % #hacker_schemes) + 1
-  return hacker_schemes[idx]
+  local micros = tonumber(wezterm.time.now():format '%f') or 0
+  local hint = tonumber(seed_hint) or 0
+  -- Mix seconds, sub-second time and a caller hint to avoid deterministic startup picks.
+  local seed = (now_s * 1000003 + micros * 9176 + hint * 7919) % 2147483647
+  if seed <= 0 then
+    seed = 1
+  end
+  math.randomseed(seed)
+  -- Warm up the PRNG to avoid first-call bias on some Lua builds.
+  math.random()
+  math.random()
+  rng_seeded = true
+end
+
+local function build_shuffled_scheme_bag(previous)
+  local bag = {}
+  for _, name in ipairs(hacker_schemes) do
+    table.insert(bag, name)
+  end
+
+  for i = #bag, 2, -1 do
+    local j = math.random(i)
+    bag[i], bag[j] = bag[j], bag[i]
+  end
+
+  -- Avoid immediate back-to-back repeats across bag boundaries.
+  if type(previous) == 'string' and #bag > 1 and bag[1] == previous then
+    local swap_idx = math.random(2, #bag)
+    bag[1], bag[swap_idx] = bag[swap_idx], bag[1]
+  end
+
+  return bag
+end
+
+local function bag_matches_current_schemes(bag)
+  if type(bag) ~= 'table' or #bag ~= #hacker_schemes then
+    return false
+  end
+
+  local seen = {}
+  for _, name in ipairs(bag) do
+    if type(name) ~= 'string' or (not hacker_scheme_set[name]) or seen[name] then
+      return false
+    end
+    seen[name] = true
+  end
+  return true
+end
+
+local function pick_scheme_from_shuffle_bag(seed_hint)
+  if #hacker_schemes == 1 then
+    local only = hacker_schemes[1]
+    persisted.last_random_scheme = only
+    persisted.random_scheme_bag = { only }
+    persisted.random_scheme_bag_index = 2
+    save_state(persisted)
+    return only
+  end
+
+  seed_rng_once(seed_hint)
+
+  local previous = persisted and persisted.last_random_scheme
+  local bag = persisted and persisted.random_scheme_bag
+  local idx = persisted and persisted.random_scheme_bag_index
+  if type(idx) ~= 'number' then
+    idx = 1
+  end
+
+  if (not bag_matches_current_schemes(bag)) or idx > #bag then
+    bag = build_shuffled_scheme_bag(previous)
+    idx = 1
+  end
+
+  local picked = bag[idx]
+  idx = idx + 1
+
+  if idx > #bag then
+    bag = build_shuffled_scheme_bag(picked)
+    idx = 1
+  end
+
+  persisted.last_random_scheme = picked
+  persisted.random_scheme_bag = bag
+  persisted.random_scheme_bag_index = idx
+  save_state(persisted)
+  return picked
 end
 
 -- Font cycling: curated "snob/hacker" fonts.
@@ -312,20 +648,25 @@ end
 wezterm.on('window-config-reloaded', function(window, pane)
   local overrides = window:get_config_overrides()
   if overrides then
+    -- Clean up legacy forced background overrides so color schemes can render
+    -- their intended backgrounds.
+    if overrides.colors and overrides.colors.background then
+      overrides.colors = nil
+      window:set_config_overrides(overrides)
+    end
     return
   end
 
   local id = window:window_id()
   font_idx_by_window_id[id] = default_font_idx
 
+  local picked_scheme = pick_scheme_from_shuffle_bag(id)
+
   window:set_config_overrides {
     font = make_hacker_font(default_font_primary),
     font_size = 16.0,
     adjust_window_size_when_changing_font_size = false,
-    color_scheme = pick_random_scheme(id),
-    colors = {
-      background = '#000000',
-    },
+    color_scheme = picked_scheme,
   }
 end)
 
@@ -633,17 +974,6 @@ local function send_back_delete(pane, count)
 end
 
 local smart_paste = wezterm.action_callback(function(window, pane)
-  -- Fast-path for Windows image clipboard content.
-  -- This avoids text-paste heuristics from swallowing the key chord required by
-  -- image-aware TUIs, and makes screenshot paste behavior deterministic.
-  if is_windows and clipboard_has_image() then
-    send_image_paste_key(window, pane)
-    if claude_image_path_backstop and is_claude_foreground(pane) then
-      paste_clipboard_image_path_into_prompt(window, pane)
-    end
-    return
-  end
-
   local before = pane:get_logical_lines_as_text(3) or ''
 
   -- Paste text first and *then* check for image.
@@ -741,11 +1071,15 @@ local cycle_theme = wezterm.action_callback(function(window, pane)
   end
   local next_name = hacker_schemes[(idx % #hacker_schemes) + 1]
   overrides.color_scheme = next_name
-  overrides.colors = overrides.colors or {}
-  overrides.colors.background = '#000000'
+  -- Ensure stale per-window color overrides don't pin the background.
+  overrides.colors = nil
   window:set_config_overrides(overrides)
 
   persisted.color_scheme = overrides.color_scheme
+  persisted.last_random_scheme = overrides.color_scheme
+  -- Manual cycling invalidates the current shuffle-bag cursor.
+  persisted.random_scheme_bag = nil
+  persisted.random_scheme_bag_index = nil
   save_state(persisted)
 end)
 
@@ -871,18 +1205,20 @@ local keys = {
 }
 
 -- Clipboard paste keybindings:
--- - Windows: Ctrl+V is paste in most apps, so we bind smart paste there.
--- - Linux/macOS: preserve Ctrl+V for applications; use the conventional Ctrl+Shift+V for paste.
+-- Keep these as plain clipboard paste so clipboard-based tools remain reliable.
 if is_windows then
-  table.insert(keys, 2, { key = 'v', mods = 'CTRL', action = smart_paste })
+  table.insert(keys, 2, { key = 'v', mods = 'CTRL', action = act.PasteFrom 'Clipboard' })
   table.insert(keys, 3, { key = 'V', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
   table.insert(keys, 4, { key = 'v', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
 else
-  table.insert(keys, 2, { key = 'V', mods = 'CTRL|SHIFT', action = smart_paste })
-  table.insert(keys, 3, { key = 'v', mods = 'CTRL|SHIFT', action = smart_paste })
+  table.insert(keys, 2, { key = 'V', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
+  table.insert(keys, 3, { key = 'v', mods = 'CTRL|SHIFT', action = act.PasteFrom 'Clipboard' })
   -- A guaranteed plain paste that doesn't depend on shift-state.
   table.insert(keys, 4, { key = 'v', mods = 'ALT', action = act.PasteFrom 'Clipboard' })
 end
+
+-- Compatibility binding used by many clipboard helpers on Windows terminals.
+table.insert(keys, { key = 'Insert', mods = 'SHIFT', action = act.PasteFrom 'Clipboard' })
 
 local config = {
   enable_tab_bar = false,
@@ -899,11 +1235,8 @@ local config = {
   -- Disable ligatures for a more "terminal" look.
   harfbuzz_features = { 'calt=0', 'clig=0', 'liga=0' },
 
-  -- Theme: start with a curated built-in scheme and force pure black background.
+  -- Theme: start with a built-in scheme.
   color_scheme = pick_default_scheme(),
-  colors = {
-    background = '#000000',
-  },
   window_background_opacity = 1.0,
 
   -- On Windows the native titlebar color is controlled by the OS; if you want
