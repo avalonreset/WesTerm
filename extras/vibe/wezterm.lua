@@ -974,6 +974,17 @@ local function send_back_delete(pane, count)
 end
 
 local smart_paste = wezterm.action_callback(function(window, pane)
+  -- Fast-path for Windows image clipboard content.
+  -- This avoids text-paste heuristics from swallowing the key chord required by
+  -- image-aware TUIs, and makes screenshot paste behavior deterministic.
+  if is_windows and clipboard_has_image() then
+    send_image_paste_key(window, pane)
+    if claude_image_path_backstop and is_claude_foreground(pane) then
+      paste_clipboard_image_path_into_prompt(window, pane)
+    end
+    return
+  end
+
   local before = pane:get_logical_lines_as_text(3) or ''
 
   -- Paste text first and *then* check for image.
