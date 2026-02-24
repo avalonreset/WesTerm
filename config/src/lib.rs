@@ -412,23 +412,11 @@ pub fn app_env_var_name(suffix: &str) -> String {
 }
 
 pub fn app_env_var_os(suffix: &str) -> Option<OsString> {
-    let primary = std::env::var_os(app_env_var_name(suffix));
-    if primary.is_some() || !is_benjaminterm_executable() {
-        return primary;
-    }
-
-    std::env::var_os(format!("WEZTERM_{suffix}"))
+    std::env::var_os(app_env_var_name(suffix))
 }
 
 pub fn app_env_var(suffix: &str) -> Result<String, std::env::VarError> {
-    let primary = std::env::var(app_env_var_name(suffix));
-    match primary {
-        Ok(value) => Ok(value),
-        Err(std::env::VarError::NotPresent) if is_benjaminterm_executable() => {
-            std::env::var(format!("WEZTERM_{suffix}"))
-        }
-        Err(err) => Err(err),
-    }
+    std::env::var(app_env_var_name(suffix))
 }
 
 pub fn set_app_env_var<S: AsRef<OsStr>>(suffix: &str, value: S) {
@@ -437,12 +425,6 @@ pub fn set_app_env_var<S: AsRef<OsStr>>(suffix: &str, value: S) {
 
 pub fn remove_app_env_var(suffix: &str) {
     std::env::remove_var(app_env_var_name(suffix));
-
-    // In BenjaminTerm mode, also clear legacy names to avoid inheriting stale
-    // values from a WezTerm session.
-    if is_benjaminterm_executable() {
-        std::env::remove_var(format!("WEZTERM_{suffix}"));
-    }
 }
 
 pub fn default_window_class() -> &'static str {

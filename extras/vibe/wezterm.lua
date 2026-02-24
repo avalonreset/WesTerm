@@ -202,6 +202,13 @@ local function pick_default_scheme()
   return hacker_schemes[1]
 end
 
+local function pick_random_scheme(seed_hint)
+  local now_s = tonumber(wezterm.time.now():format '%s') or 0
+  local seed = now_s + ((seed_hint or 0) * 7919)
+  local idx = (seed % #hacker_schemes) + 1
+  return hacker_schemes[idx]
+end
+
 -- Font cycling: curated "snob/hacker" fonts.
 --
 -- Notes:
@@ -298,6 +305,29 @@ local function get_font_idx(window)
   end
   return idx
 end
+
+-- Initialize every newly created window with BenjaminTerm defaults.
+-- This ensures all windows (not just the first) get the expected font sizing
+-- behavior and a randomized hacker theme.
+wezterm.on('window-config-reloaded', function(window, pane)
+  local overrides = window:get_config_overrides()
+  if overrides then
+    return
+  end
+
+  local id = window:window_id()
+  font_idx_by_window_id[id] = default_font_idx
+
+  window:set_config_overrides {
+    font = make_hacker_font(default_font_primary),
+    font_size = 16.0,
+    adjust_window_size_when_changing_font_size = false,
+    color_scheme = pick_random_scheme(id),
+    colors = {
+      background = '#000000',
+    },
+  }
+end)
 
 -- Smart paste for Windows:
 -- If the clipboard currently holds an image, forward Ctrl+V into the running program
@@ -913,7 +943,6 @@ local config = {
 --   BENJAMINTERM_FRONT_END=OpenGL|WebGpu|Software
 local env_front_end =
   normalize_front_end_name(os.getenv 'BENJAMINTERM_FRONT_END')
-  or normalize_front_end_name(os.getenv 'WEZTERM_FRONT_END')
 
 if is_windows then
   -- Use PowerShell 7 by default on Windows. Command history is a shell feature (PSReadLine),

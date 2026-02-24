@@ -1,0 +1,132 @@
+BENJAMINTERM :: A WINDOWS-FIRST TERMINAL DISTRO POWERED BY WEZTERM
+===================================================================
+
+Project: https://github.com/avalonreset/BenjaminTerm
+Base: WezTerm (MIT)
+Identity: BenjaminTerm keeps upstream engine power, then adds workflow-first defaults for real coding sessions.
+
+
+WHAT BENJAMINTERM IS
+--------------------
+BenjaminTerm is a custom distro/fork of WezTerm focused on one core idea:
+make daily terminal work faster, cleaner, and less annoying on Windows,
+without giving up cross-platform behavior for Linux friends.
+
+It ships with opinionated defaults and practical quality-of-life controls:
+- Smart copy/paste behavior
+- Paste undo/redo
+- Theme and font cycling
+- Borderless mode + drag assist
+- Pane-aware Windows notification click-to-focus
+- Distinct app identity so it can coexist with stock WezTerm
+
+In short: same serious terminal core, different personality and defaults.
+
+
+THE VIBE (YES, LITERALLY)
+-------------------------
+Default look and feel is intentionally hacker-styled and minimal:
+- Color scheme: Blue Matrix, forced pure-black background
+- Default shell on Windows: pwsh.exe
+- Cleaner chrome: tab bar off, focus on content
+- Branding: BEN icon + BenjaminTerm naming across installer/runtime
+
+If stock terminal defaults feel like office lighting,
+BenjaminTerm is the room with the lights off and the monitor glow doing the talking.
+
+
+FEATURE HIGHLIGHTS
+------------------
+1) Smart Ctrl+C
+   - If text is selected: copy and clear selection.
+   - If nothing is selected: pass through true interrupt behavior.
+
+2) Smart Paste by Platform
+   - Windows: Ctrl+V
+   - Linux/macOS: Ctrl+Shift+V
+
+3) Paste Undo / Redo (best effort)
+   - Undo: Ctrl+Z
+   - Redo: Ctrl+Shift+Z
+
+4) Fast Visual Iteration
+   - Cycle themes: Ctrl+Alt+T (and Shift variant)
+   - Cycle fonts : Ctrl+Alt+F (and Shift variant)
+
+5) Borderless Productivity Mode
+   - Toggle borderless: Ctrl+Alt+B (and Shift variant)
+   - Drag assist      : Ctrl+Alt+D (and Shift variant)
+
+6) Notification Workflow Boost
+   - Windows toast clicks can jump focus back to the exact pane/tab/window that raised the alert.
+
+7) Side-by-Side Safety
+   - Separate Windows app identity + executable naming.
+   - BenjaminTerm and WezTerm can both be installed, pinned, and used independently.
+
+
+HOTKEY SNAPSHOT
+---------------
+Ctrl+C               smart copy / pass-through interrupt
+Ctrl+Alt+C           force pass-through interrupt
+Ctrl+V               smart paste (Windows)
+Ctrl+Shift+V         plain paste (Windows) / smart paste (Linux/macOS)
+Alt+V                plain paste (Linux/macOS)
+Ctrl+Z               undo recent paste
+Ctrl+Shift+Z         redo recent paste (best effort)
+Ctrl+Shift+R         reload config
+Ctrl+F               search
+Ctrl+- / Ctrl+= / 0  font size down / up / reset
+Ctrl+Alt+T           cycle theme
+Ctrl+Alt+F           cycle font
+Ctrl+Alt+B           toggle borderless
+Ctrl+Alt+D           drag window while borderless
+
+Caps Lock survivors welcome: letter hotkeys accept Shift + non-Shift variants.
+
+
+WHY THIS EXISTS
+---------------
+Because terminal users spend thousands of tiny interactions per week.
+If each interaction is 1% less annoying, the compound return is huge.
+BenjaminTerm is that 1% compounding project.
+
+It is not trying to replace upstream innovation.
+It is trying to package a workflow opinion that is immediately usable.
+
+
+CURRENT REALITY CHECK (THE META SECTION)
+----------------------------------------
+BenjaminTerm improved behavior significantly for daily use,
+but live width-resize edge cases can still be rough under specific flows.
+
+Translation: it is genuinely better, not magically perfect.
+
+Or, in terminal dialect:
+- Fast? yes.
+- Useful? yes.
+- Stylish? aggressively yes.
+- Immune to resize chaos in every possible case? not yet.
+
+That is still a valid release state when the practical experience is better.
+
+
+BENJAMINTERM IN ONE SENTENCE
+----------------------------
+BenjaminTerm is WezTerm with a hacker persona, workflow-first defaults,
+and enough practical shortcuts to make everyday terminal work feel intentional.
+
+
+BENJAMINTERM IN TWO SENTENCES (FOR PEOPLE WHO SCROLL)
+------------------------------------------------------
+BenjaminTerm keeps the proven WezTerm core and layers on quality-of-life features that matter in real coding loops.
+It favors pragmatic gains over perfection theatre: ship improvements, keep iterating, stay usable.
+
+
+EPILOGUE
+--------
+You can call it a fork.
+You can call it a distro.
+You can call it "the terminal that finally stopped arguing with my muscle memory."
+
+All three are true.
