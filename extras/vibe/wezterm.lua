@@ -974,10 +974,17 @@ local function send_back_delete(pane, count)
 end
 
 local smart_paste = wezterm.action_callback(function(window, pane)
-  -- Fast-path for Windows image clipboard content.
-  -- This avoids text-paste heuristics from swallowing the key chord required by
-  -- image-aware TUIs, and makes screenshot paste behavior deterministic.
-  if is_windows and clipboard_has_image() then
+  local clipboard_text = nil
+  local clipboard_has_text = false
+  if is_windows then
+    clipboard_text = get_clipboard_text()
+    clipboard_has_text = type(clipboard_text) == 'string' and clipboard_text ~= ''
+  end
+
+  -- Fast-path for Windows image-only clipboard content.
+  -- If text is present too, prefer text paste (voice transcription tools often
+  -- provide text while an older image format still exists on the clipboard).
+  if is_windows and (not clipboard_has_text) and clipboard_has_image() then
     send_image_paste_key(window, pane)
     if claude_image_path_backstop and is_claude_foreground(pane) then
       paste_clipboard_image_path_into_prompt(window, pane)
@@ -1002,7 +1009,7 @@ local smart_paste = wezterm.action_callback(function(window, pane)
   -- Claude Code on Windows uses Alt+V; Codex/Gemini-style TUIs generally use Ctrl+V.
   -- Only do this if the paste didn't visibly change the viewport; otherwise
   -- we'd risk forwarding a second paste chord after successfully pasting text.
-  if is_windows and (not changed) and clipboard_has_image() then
+  if is_windows and (not clipboard_has_text) and (not changed) and clipboard_has_image() then
     send_image_paste_key(window, pane)
     return
   end
@@ -1013,7 +1020,10 @@ local smart_paste = wezterm.action_callback(function(window, pane)
   -- Record a best-effort "undo last paste" entry for text pastes.
   -- This is not a full editor undo system; it tries to delete the pasted
   -- characters by sending DEL repeatedly.
-  local text = get_clipboard_text()
+  local text = clipboard_text
+  if not text then
+    text = get_clipboard_text()
+  end
   if text and text ~= '' then
     if char_len(text) > paste_undo_max_chars then
       return
